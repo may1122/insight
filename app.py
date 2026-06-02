@@ -127,7 +127,7 @@ def validate_columns(sales, stock, purchase):
     ]
 
     required_purchase = [
-        "Tarih", "Barkod", "Ürün Adı", "Adet", "Alış Tutarı TL"
+        "Tarih", "Barkod", "Ürün Adı", "Adet", "Toplam Alış TL"
     ]
 
     missing = {
