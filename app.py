@@ -937,24 +937,32 @@ def apply_plot_theme(fig, height=360):
 # VERİ STANDARDİZASYONU
 # ============================================================
 def standardize_ayca_data(raw_df: pd.DataFrame) -> pd.DataFrame:
+    """
+    İki formatı destekler:
+    1) AYÇA tam veri formatı: ürün + stok + miad + son 60 gün çıkış içerir.
+    2) TEBEOS satış listesi formatı: stok/miad/ürün detayı yoksa satış performansı modu açılır.
+
+    Satış performansı modunda stok, miad ve sipariş analizleri veri olmadığı için otomatik olarak pasif/boş görünür;
+    ciro, brüt kâr, tahsilat, kurum, işlem sayısı, ortalama sepet ve günlük performans çalışır.
+    """
     cols = list(raw_df.columns)
 
     mapping = {
-        "tarih": find_col(cols, ["Tarih"]),
-        "fis": find_col(cols, ["Fiş/Reçete No", "Fis Recete No", "Fiş No", "Reçete No"]),
-        "kaynak": find_col(cols, ["Kaynak"]),
+        "tarih": find_col(cols, ["Tarih", "İşlem Tarihi", "Islem Tarihi", "Alım Tarih", "Alim Tarih", "Reç. Tar", "Rec. Tar"]),
+        "fis": find_col(cols, ["Fiş/Reçete No", "Fis Recete No", "Fiş No", "Reçete No", "Satış No", "Satis No", "Reç. No", "Rec. No"]),
+        "kaynak": find_col(cols, ["Kaynak", "Satış Tipi", "Satis Tipi"]),
         "barkod": find_col(cols, ["Barkod"]),
-        "urun": find_col(cols, ["Ürün Adı", "Urun Adi", "İlaç Adı", "Malzeme Adı"]),
-        "kategori": find_col(cols, ["Kategori"]),
-        "alt_kategori": find_col(cols, ["Alt Kategori"]),
+        "urun": find_col(cols, ["Ürün Adı", "Urun Adi", "İlaç Adı", "Ilac Adi", "Malzeme Adı"]),
+        "kategori": find_col(cols, ["Kategori", "Kurum Adı", "Kurum Adi", "Satış Tipi", "Satis Tipi"]),
+        "alt_kategori": find_col(cols, ["Alt Kategori", "Grubu", "Tahsilat"]),
         "adet": find_col(cols, ["Adet", "Miktar", "Satış Adet"]),
         "alis_birim": find_col(cols, ["Alış Birim TL", "Alis Birim TL", "Alış Fiyatı", "Maliyet Birim"]),
         "satis_birim": find_col(cols, ["Satış Birim TL", "Satis Birim TL", "Satış Fiyatı"]),
-        "ciro": find_col(cols, ["Ciro TL", "Ciro", "Satış Tutarı"]),
-        "maliyet": find_col(cols, ["Maliyet TL", "Maliyet"]),
-        "brut_kar": find_col(cols, ["Brüt Kar TL", "Brut Kar TL", "Kar TL"]),
+        "ciro": find_col(cols, ["Ciro TL", "Ciro", "Satış Tutarı", "Toplam Tutar", "Ödenen Tutar", "Odenen Tutar"]),
+        "maliyet": find_col(cols, ["Maliyet TL", "Maliyet", "Maliyet Tutarı", "Maliyet Tutari"]),
+        "brut_kar": find_col(cols, ["Brüt Kar TL", "Brut Kar TL", "Kar TL", "Kar Tutarı", "Kar Tutari"]),
         "brut_kar_oran": find_col(cols, ["Brüt Kar %", "Brut Kar %", "Kar %"]),
-        "tahsilat": find_col(cols, ["SGK/Tahsilat Tipi", "Tahsilat Tipi", "Ödeme Tipi"]),
+        "tahsilat": find_col(cols, ["SGK/Tahsilat Tipi", "Tahsilat Tipi", "Ödeme Tipi", "Tahsilat"]),
         "stok": find_col(cols, ["Mevcut Stok", "Stok", "Kalan Stok"]),
         "miad": find_col(cols, ["Miad Tarihi", "Miat Tarihi", "SKT", "Son Kullanma Tarihi"]),
         "tedarikci": find_col(cols, ["Tedarikçi", "Tedarikci"]),
@@ -964,41 +972,63 @@ def standardize_ayca_data(raw_df: pd.DataFrame) -> pd.DataFrame:
         "siparis": find_col(cols, ["Sipariş Önerisi", "Siparis Onerisi"]),
     }
 
-    required = ["tarih", "urun", "kategori", "adet", "ciro", "brut_kar", "stok", "miad", "son_60"]
-    missing = [k for k in required if mapping.get(k) is None]
-    if missing:
-        readable = ", ".join(missing)
+    full_required = ["tarih", "urun", "kategori", "adet", "ciro", "brut_kar", "stok", "miad", "son_60"]
+    missing_full = [k for k in full_required if mapping.get(k) is None]
+
+    # TEBEOS satış listesi gibi stok/miad/ürün detayı olmayan dosyalar için hafif mod.
+    sales_only_possible = (
+        mapping.get("tarih") is not None
+        and mapping.get("fis") is not None
+        and mapping.get("ciro") is not None
+        and (mapping.get("brut_kar") is not None or mapping.get("maliyet") is not None)
+    )
+
+    if missing_full and not sales_only_possible:
+        readable = ", ".join(missing_full)
         raise ValueError(f"Eksik zorunlu kolonlar: {readable}. Lütfen Excel formatını kontrol edin.")
 
     df = pd.DataFrame()
     df["tarih"] = excel_serial_to_datetime(raw_df[mapping["tarih"]])
-    df["fis"] = raw_df[mapping["fis"]].astype(str) if mapping["fis"] else ""
+    df["fis"] = raw_df[mapping["fis"]].astype(str) if mapping["fis"] else raw_df.index.astype(str)
     df["kaynak"] = raw_df[mapping["kaynak"]].astype(str) if mapping["kaynak"] else "Bilinmiyor"
-    df["barkod"] = raw_df[mapping["barkod"]].astype(str) if mapping["barkod"] else ""
-    df["urun"] = raw_df[mapping["urun"]].astype(str)
-    df["kategori"] = raw_df[mapping["kategori"]].astype(str)
+
+    # Ürün detayı yoksa her satış fişini geçici analiz kalemi gibi kullanıyoruz.
+    # Böylece ürün/stok zekası pasif kalırken finansal dashboard çalışır.
+    if mapping["urun"]:
+        df["urun"] = raw_df[mapping["urun"]].astype(str)
+    else:
+        df["urun"] = "Satış İşlemi " + df["fis"].astype(str)
+
+    if mapping["barkod"]:
+        df["barkod"] = raw_df[mapping["barkod"]].astype(str)
+    else:
+        df["barkod"] = df["fis"].astype(str)
+
+    df["kategori"] = raw_df[mapping["kategori"]].astype(str) if mapping["kategori"] else df["kaynak"]
     df["alt_kategori"] = raw_df[mapping["alt_kategori"]].astype(str) if mapping["alt_kategori"] else "Genel"
 
-    df["adet"] = pd.to_numeric(raw_df[mapping["adet"]], errors="coerce").fillna(0)
-    df["alis_birim"] = pd.to_numeric(raw_df[mapping["alis_birim"]], errors="coerce").fillna(0) if mapping["alis_birim"] else 0
-    df["satis_birim"] = pd.to_numeric(raw_df[mapping["satis_birim"]], errors="coerce").fillna(0) if mapping["satis_birim"] else 0
+    df["adet"] = pd.to_numeric(raw_df[mapping["adet"]], errors="coerce").fillna(0) if mapping["adet"] else 1
     df["ciro"] = pd.to_numeric(raw_df[mapping["ciro"]], errors="coerce").fillna(0)
-    df["maliyet"] = pd.to_numeric(raw_df[mapping["maliyet"]], errors="coerce").fillna(0) if mapping["maliyet"] else df["adet"] * df["alis_birim"]
-    df["brut_kar"] = pd.to_numeric(raw_df[mapping["brut_kar"]], errors="coerce").fillna(0)
-    df["brut_kar_oran"] = pd.to_numeric(raw_df[mapping["brut_kar_oran"]], errors="coerce").fillna(np.nan) if mapping["brut_kar_oran"] else np.nan
+    df["maliyet"] = pd.to_numeric(raw_df[mapping["maliyet"]], errors="coerce").fillna(0) if mapping["maliyet"] else 0
+    df["brut_kar"] = pd.to_numeric(raw_df[mapping["brut_kar"]], errors="coerce").fillna(0) if mapping["brut_kar"] else (df["ciro"] - df["maliyet"])
+
+    df["alis_birim"] = pd.to_numeric(raw_df[mapping["alis_birim"]], errors="coerce").fillna(0) if mapping["alis_birim"] else np.where(df["adet"] > 0, df["maliyet"] / df["adet"], 0)
+    df["satis_birim"] = pd.to_numeric(raw_df[mapping["satis_birim"]], errors="coerce").fillna(0) if mapping["satis_birim"] else np.where(df["adet"] > 0, df["ciro"] / df["adet"], 0)
+    df["brut_kar_oran"] = pd.to_numeric(raw_df[mapping["brut_kar_oran"]], errors="coerce").fillna(np.nan) if mapping["brut_kar_oran"] else np.where(df["ciro"] > 0, df["brut_kar"] / df["ciro"], 0)
 
     df["tahsilat"] = raw_df[mapping["tahsilat"]].astype(str) if mapping["tahsilat"] else "Bilinmiyor"
-    df["stok"] = pd.to_numeric(raw_df[mapping["stok"]], errors="coerce").fillna(0)
-    df["miad"] = excel_serial_to_datetime(raw_df[mapping["miad"]])
+    df["stok"] = pd.to_numeric(raw_df[mapping["stok"]], errors="coerce").fillna(0) if mapping["stok"] else 0
+    df["miad"] = excel_serial_to_datetime(raw_df[mapping["miad"]]) if mapping["miad"] else pd.NaT
     df["tedarikci"] = raw_df[mapping["tedarikci"]].astype(str) if mapping["tedarikci"] else "Bilinmiyor"
     df["raf"] = raw_df[mapping["raf"]].astype(str) if mapping["raf"] else "Bilinmiyor"
-    df["son_60"] = pd.to_numeric(raw_df[mapping["son_60"]], errors="coerce").fillna(0)
+    df["son_60"] = pd.to_numeric(raw_df[mapping["son_60"]], errors="coerce").fillna(0) if mapping["son_60"] else 0
     df["stok_ay"] = pd.to_numeric(raw_df[mapping["stok_ay"]], errors="coerce").fillna(np.nan) if mapping["stok_ay"] else np.nan
     df["siparis_onerisi"] = raw_df[mapping["siparis"]].astype(str) if mapping["siparis"] else ""
 
     df = df.dropna(subset=["tarih"])
+    df.attrs["sales_only_mode"] = bool(missing_full and sales_only_possible)
+    df.attrs["missing_full_columns"] = missing_full
     return df
-
 
 def build_product_table(df: pd.DataFrame, today: pd.Timestamp) -> pd.DataFrame:
     """
@@ -1380,6 +1410,14 @@ try:
 except Exception as exc:
     st.error(f"Dosya okunurken hata oluştu: {exc}")
     st.stop()
+
+if df.attrs.get("sales_only_mode"):
+    eksikler = ", ".join(df.attrs.get("missing_full_columns", []))
+    st.warning(
+        "Bu dosya stok/miad/ürün detayı içermeyen TEBEOS satış listesi gibi okundu. "
+        "Ciro, kâr, tahsilat, kurum ve günlük satış analizleri çalışır; stok bitiş, miad ve sipariş önerisi bölümleri veri olmadığı için boş/pasif kalır. "
+        f"Tam analiz için eksik alanlar: {eksikler}."
+    )
 
 
 today = pd.Timestamp.today().normalize()
