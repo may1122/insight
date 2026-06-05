@@ -2,7 +2,7 @@
 # ============================================================
 # AYÇA Insight V4.2 Soft
 # Eczanenin Dijital Yönetim Paneli
-# Revizyon: Kritik Merkez kartları aktif bölüm değiştirir; eski yatay bölüm menüsü korunur
+# Revizyon: Demo giriş/kayıt ekranı eklendi; Kritik Merkez kartları aktif bölüm değiştirir; eski yatay bölüm menüsü korunur
 # ------------------------------------------------------------
 # Bu app.py, kullanıcının verdiği AYÇA Excel formatına göre yazılmıştır.
 #
@@ -449,6 +449,185 @@ st.markdown(
 
 
 # ============================================================
+# DEMO GİRİŞ / KAYIT EKRANI
+# ============================================================
+DEMO_USER = "demo"
+DEMO_PASSWORD = "ayca2026"
+
+
+def safe_rerun():
+    try:
+        st.rerun()
+    except Exception:
+        st.experimental_rerun()
+
+
+def show_demo_auth_screen():
+    st.markdown(
+        """
+        <style>
+        [data-testid="stSidebar"] {display: none;}
+        .login-shell {
+            max-width: 980px;
+            margin: 32px auto 0 auto;
+            display: grid;
+            grid-template-columns: 1.1fr .9fr;
+            gap: 22px;
+            align-items: stretch;
+        }
+        .login-hero {
+            background: linear-gradient(135deg, #FFFFFF 0%, #EFF6FF 55%, #DCFCE7 100%);
+            border: 1px solid #BFDBFE;
+            border-radius: 28px;
+            padding: 34px;
+            box-shadow: 0 18px 45px rgba(15, 23, 42, 0.08);
+            min-height: 430px;
+        }
+        .login-card {
+            background: #FFFFFF;
+            border: 1px solid #E2E8F0;
+            border-radius: 28px;
+            padding: 28px;
+            box-shadow: 0 18px 45px rgba(15, 23, 42, 0.08);
+        }
+        .login-logo {
+            width: 64px;
+            height: 64px;
+            border-radius: 20px;
+            background: #DBEAFE;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 34px;
+            margin-bottom: 18px;
+        }
+        .login-title {
+            font-size: 38px;
+            line-height: 1.08;
+            font-weight: 950;
+            letter-spacing: -1px;
+            color: #0F172A;
+            margin-bottom: 12px;
+        }
+        .login-sub {
+            color: #64748B;
+            font-size: 15px;
+            line-height: 1.6;
+            margin-bottom: 24px;
+        }
+        .feature-row {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            background: rgba(255,255,255,.75);
+            border: 1px solid rgba(226,232,240,.8);
+            border-radius: 16px;
+            padding: 11px 13px;
+            margin: 10px 0;
+            color: #0F172A;
+            font-weight: 750;
+            font-size: 14px;
+        }
+        .demo-badge {
+            display: inline-block;
+            background: #EDE9FE;
+            color: #6D28D9;
+            border-radius: 999px;
+            padding: 7px 12px;
+            font-size: 12px;
+            font-weight: 900;
+            margin-bottom: 14px;
+        }
+        .credential-box {
+            background: #F8FAFC;
+            border: 1px dashed #CBD5E1;
+            border-radius: 16px;
+            padding: 12px 14px;
+            color: #334155;
+            font-size: 13px;
+            margin-top: 12px;
+        }
+        @media (max-width: 900px) {
+            .login-shell {grid-template-columns: 1fr;}
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    left, right = st.columns([1.12, .88])
+    with left:
+        st.markdown(
+            """
+            <div class="login-hero">
+                <div class="login-logo">💊</div>
+                <div class="demo-badge">AYÇA Insight Demo</div>
+                <div class="login-title">Eczanenizin dijital yönetim paneli</div>
+                <div class="login-sub">
+                    Stok, miad, kârlılık, sipariş ve ölü stok risklerini tek ekranda yorumlayan demo panel.
+                    Bu ekran sunum ve ürün tanıtımı için hazırlanmıştır.
+                </div>
+                <div class="feature-row">📦 Kritik stok ve bitiş tahmini</div>
+                <div class="feature-row">⏳ Miad yaklaşan ürün uyarıları</div>
+                <div class="feature-row">🛒 Sipariş önerisi ve maliyet analizi</div>
+                <div class="feature-row">💰 Kârlılık ve kategori performansı</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    with right:
+        st.markdown('<div class="login-card">', unsafe_allow_html=True)
+        st.markdown("### Giriş Yap")
+        mode = st.radio("İşlem", ["Giriş", "Demo Kayıt"], horizontal=True, label_visibility="collapsed")
+
+        if mode == "Giriş":
+            username = st.text_input("Kullanıcı adı", value="demo")
+            password = st.text_input("Şifre", value="", type="password")
+            login_clicked = st.button("🚀 Dashboard'a Giriş Yap", use_container_width=True)
+
+            st.markdown(
+                f"""
+                <div class="credential-box">
+                    Demo kullanıcı: <b>{DEMO_USER}</b><br>
+                    Demo şifre: <b>{DEMO_PASSWORD}</b>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+            if login_clicked:
+                if username.strip() == DEMO_USER and password == DEMO_PASSWORD:
+                    st.session_state["authenticated"] = True
+                    st.session_state["auth_user"] = "Demo Kullanıcı"
+                    st.session_state["auth_pharmacy"] = "İdil Eczanesi"
+                    safe_rerun()
+                else:
+                    st.error("Kullanıcı adı veya şifre hatalı. Demo için: demo / ayca2026")
+
+        else:
+            pharmacy = st.text_input("Eczane adı")
+            name = st.text_input("Yetkili adı")
+            phone = st.text_input("Telefon / e-posta")
+            st.text_input("Şifre", type="password")
+            st.text_input("Şifre tekrar", type="password")
+            if st.button("📝 Demo Talebi Oluştur", use_container_width=True):
+                st.success("Demo talebi oluşturuldu. Bu demo sürümde gerçek kayıt yapılmaz.")
+                if pharmacy or name or phone:
+                    st.info("Sonraki gerçek sistemde bu alanlar kullanıcı veritabanına bağlanacak.")
+
+        st.markdown("</div>", unsafe_allow_html=True)
+
+
+if "authenticated" not in st.session_state:
+    st.session_state["authenticated"] = False
+
+if not st.session_state["authenticated"]:
+    show_demo_auth_screen()
+    st.stop()
+
+
+# ============================================================
 # GENEL YARDIMCI FONKSİYONLAR
 # ============================================================
 def normalize_col_name(name: str) -> str:
@@ -887,6 +1066,13 @@ def create_excel_report(df, p, critical_df, miad_df, dead_df, order_df):
 # ============================================================
 # SIDEBAR
 # ============================================================
+st.sidebar.success(f"Giriş: {st.session_state.get('auth_user', 'Demo Kullanıcı')}")
+if st.sidebar.button("Çıkış Yap", use_container_width=True):
+    st.session_state["authenticated"] = False
+    st.session_state.pop("auth_user", None)
+    st.session_state.pop("auth_pharmacy", None)
+    safe_rerun()
+
 st.sidebar.title("💊 AYÇA Insight")
 st.sidebar.caption("V4.2 Soft Dashboard")
 
