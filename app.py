@@ -451,8 +451,20 @@ st.markdown(
 # ============================================================
 # DEMO GİRİŞ / KAYIT EKRANI
 # ============================================================
-DEMO_USER = "demo"
-DEMO_PASSWORD = "ayca2026"
+DEMO_USERS = {
+    "basic": {
+        "password": "basic2026",
+        "name": "Basic Demo Kullanıcı",
+        "pharmacy": "İdil Eczanesi",
+        "membership": "Basic",
+    },
+    "premium": {
+        "password": "premium2026",
+        "name": "Premium Demo Kullanıcı",
+        "pharmacy": "İdil Eczanesi",
+        "membership": "Premium",
+    },
+}
 
 
 def safe_rerun():
@@ -460,6 +472,26 @@ def safe_rerun():
         st.rerun()
     except Exception:
         st.experimental_rerun()
+
+
+def get_membership() -> str:
+    return st.session_state.get("membership", "Basic")
+
+
+def is_premium_user() -> bool:
+    return get_membership().lower() == "premium"
+
+
+def show_basic_info(message: str = "Basic demo kullanıcısı bu bölümde yalnızca kısa önizleme görür. Detaylı tablo, grafik ve raporlar Premium üyelikte açılır."):
+    st.markdown(
+        f''' 
+        <div class="mini-card alert-orange" style="margin: 10px 0 16px 0; min-height: auto;">
+            <div class="mini-title">🔒 Basic Üyelik Önizlemesi</div>
+            <div class="mini-note">{message}</div>
+        </div>
+        ''',
+        unsafe_allow_html=True,
+    )
 
 
 def show_demo_auth_screen():
@@ -582,28 +614,33 @@ def show_demo_auth_screen():
         mode = st.radio("İşlem", ["Giriş", "Demo Kayıt"], horizontal=True, label_visibility="collapsed")
 
         if mode == "Giriş":
-            username = st.text_input("Kullanıcı adı", value="demo")
+            username = st.text_input("Kullanıcı adı", value="premium")
             password = st.text_input("Şifre", value="", type="password")
             login_clicked = st.button("🚀 Dashboard'a Giriş Yap", use_container_width=True)
 
             st.markdown(
-                f"""
+                """
                 <div class="credential-box">
-                    Demo kullanıcı: <b>{DEMO_USER}</b><br>
-                    Demo şifre: <b>{DEMO_PASSWORD}</b>
+                    <b>Premium demo</b><br>
+                    Kullanıcı: <b>premium</b> · Şifre: <b>premium2026</b><br><br>
+                    <b>Basic demo</b><br>
+                    Kullanıcı: <b>basic</b> · Şifre: <b>basic2026</b>
                 </div>
                 """,
                 unsafe_allow_html=True,
             )
 
             if login_clicked:
-                if username.strip() == DEMO_USER and password == DEMO_PASSWORD:
+                user_key = username.strip().lower()
+                user_record = DEMO_USERS.get(user_key)
+                if user_record and password == user_record["password"]:
                     st.session_state["authenticated"] = True
-                    st.session_state["auth_user"] = "Demo Kullanıcı"
-                    st.session_state["auth_pharmacy"] = "İdil Eczanesi"
+                    st.session_state["auth_user"] = user_record["name"]
+                    st.session_state["auth_pharmacy"] = user_record["pharmacy"]
+                    st.session_state["membership"] = user_record["membership"]
                     safe_rerun()
                 else:
-                    st.error("Kullanıcı adı veya şifre hatalı. Demo için: demo / ayca2026")
+                    st.error("Kullanıcı adı veya şifre hatalı. Premium: premium / premium2026 · Basic: basic / basic2026")
 
         else:
             pharmacy = st.text_input("Eczane adı")
@@ -625,6 +662,46 @@ if "authenticated" not in st.session_state:
 if not st.session_state["authenticated"]:
     show_demo_auth_screen()
     st.stop()
+
+
+# ============================================================
+# BASIC / PREMIUM DEMO ERİŞİM KONTROLÜ
+# ============================================================
+_original_dataframe = st.dataframe
+_original_plotly_chart = st.plotly_chart
+_original_download_button = st.download_button
+
+
+def premium_locked_chart(*args, **kwargs):
+    if is_premium_user():
+        return _original_plotly_chart(*args, **kwargs)
+    show_basic_info("Basic üyelikte grafikler kapalıdır. Bu bölümde sadece kısa özet ve en fazla 2 satır önizleme gösterilir.")
+    return None
+
+
+def limited_dataframe(data=None, *args, **kwargs):
+    if is_premium_user():
+        return _original_dataframe(data, *args, **kwargs)
+
+    try:
+        preview = data.head(2).copy() if hasattr(data, "head") else data
+        show_basic_info("Basic üyelikte tablo önizlemesi en fazla 2 satırdır. Tüm ürün listesi ve detaylı analiz Premium üyelikte görünür.")
+        return _original_dataframe(preview, *args, **kwargs)
+    except Exception:
+        show_basic_info()
+        return _original_dataframe(data, *args, **kwargs)
+
+
+def premium_download_button(*args, **kwargs):
+    if is_premium_user():
+        return _original_download_button(*args, **kwargs)
+    show_basic_info("Basic üyelikte Excel raporu indirme kapalıdır. Rapor indirme Premium üyelikte açılır.")
+    return False
+
+
+st.plotly_chart = premium_locked_chart
+st.dataframe = limited_dataframe
+st.download_button = premium_download_button
 
 
 # ============================================================
@@ -1066,11 +1143,12 @@ def create_excel_report(df, p, critical_df, miad_df, dead_df, order_df):
 # ============================================================
 # SIDEBAR
 # ============================================================
-st.sidebar.success(f"Giriş: {st.session_state.get('auth_user', 'Demo Kullanıcı')}")
+st.sidebar.success(f"Giriş: {st.session_state.get('auth_user', 'Demo Kullanıcı')} · {get_membership()}")
 if st.sidebar.button("Çıkış Yap", use_container_width=True):
     st.session_state["authenticated"] = False
     st.session_state.pop("auth_user", None)
     st.session_state.pop("auth_pharmacy", None)
+    st.session_state.pop("membership", None)
     safe_rerun()
 
 st.sidebar.title("💊 AYÇA Insight")
@@ -1248,7 +1326,7 @@ st.markdown(
     <div class="ayca-header">
         <div class="ayca-title">
             <h1>AYÇA Insight V4.2</h1>
-            <p>{eczane_adi} · {selected_period} · Sayfa: {active_sheet} · {today_str}</p>
+            <p>{eczane_adi} · {selected_period} · Sayfa: {active_sheet} · {today_str} · {get_membership()} Demo</p>
         </div>
         <div class="header-pill">AYÇA Skoru: {score}/100</div>
     </div>
@@ -1256,6 +1334,17 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
+
+if not is_premium_user():
+    st.markdown(
+        """
+        <div class="ai-card" style="background: linear-gradient(135deg, #FFFFFF 0%, #FEF3C7 100%); border-color: #FDE68A;">
+            <div class="ai-title" style="color:#B45309;">🔐 Basic Demo Modu</div>
+            <div class="ai-text">Bu kullanıcı kısa özet, KPI kartları ve 1-2 satırlık önizleme görür. Tüm grafikler, detaylı tablolar ve Excel raporu Premium kullanıcıda açılır.</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
 # ============================================================
 # KPI KARTLARI
