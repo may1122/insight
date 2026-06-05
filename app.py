@@ -2,6 +2,7 @@
 # ============================================================
 # AYÇA Insight V4.2 Soft
 # Eczanenin Dijital Yönetim Paneli
+# Revizyon: Kritik Merkez kartları aktif bölüm değiştirir; eski yatay bölüm menüsü korunur
 # ------------------------------------------------------------
 # Bu app.py, kullanıcının verdiği AYÇA Excel formatına göre yazılmıştır.
 #
@@ -373,16 +374,73 @@ st.markdown(
         font-weight: 900;
     }
 
-    .stButton > button:hover,
+     .stButton > button:hover,
     .stDownloadButton > button:hover {
         border-color: var(--blue);
         background: var(--blue-soft);
         color: var(--blue);
     }
 
+    /* Kritik Merkez kartları artık gerçek Streamlit butonudur. */
+    div[data-testid="stHorizontalBlock"] .stButton > button {
+        min-height: 132px;
+        border-radius: 20px;
+        padding: 18px;
+        text-align: left;
+        white-space: pre-line;
+        font-size: 15px;
+        line-height: 1.45;
+        box-shadow: 0 10px 26px rgba(15, 23, 42, 0.05);
+    }
+
+
+
+    .click-card-link {
+        display: block;
+        text-decoration: none !important;
+        color: inherit !important;
+    }
+
+    .click-card-link .mini-card {
+        cursor: pointer;
+        transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
+    }
+
+    .click-card-link:hover .mini-card {
+        transform: translateY(-4px);
+        box-shadow: 0 16px 34px rgba(15, 23, 42, 0.12);
+        border-color: #2563EB;
+    }
+
+    .click-card-hint {
+        margin-top: 8px;
+        color: #2563EB;
+        font-size: 12px;
+        font-weight: 900;
+    }
+
     .small-muted {
         color: var(--muted);
         font-size: 13px;
+    }
+
+    /* Yatay bölüm menüsü eski sekme hissini korusun. */
+    div[role="radiogroup"] {
+        gap: 10px;
+    }
+
+    div[role="radiogroup"] label {
+        background: #FFFFFF;
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 10px 14px;
+        box-shadow: 0 4px 12px rgba(15,23,42,0.04);
+    }
+
+    div[role="radiogroup"] label:has(input:checked) {
+        background: var(--blue-soft);
+        border-color: #BFDBFE;
+        color: var(--blue);
     }
     </style>
     """,
@@ -538,6 +596,18 @@ def make_mini_card(title, value, note, css_class=""):
         """,
         unsafe_allow_html=True,
     )
+
+
+def make_clickable_mini_card(title, value, note, css_class="", page_name=None, hint="Detayı göster", key=None):
+    """
+    Kritik Merkez kartını gerçek Streamlit butonu gibi çalıştırır.
+    URL değiştirmez, başka sekmeye atmaz; sadece session_state içindeki aktif sayfayı değiştirir.
+    """
+    label = f"{title}\n\n{value}\n{note}"
+    clicked = st.button(label, key=key or f"card_{normalize_col_name(title)}", use_container_width=True)
+    if clicked and page_name is not None:
+        st.session_state["aktif_sayfa"] = page_name
+        st.rerun()
 
 
 def sparkline(values, color="#2563EB"):
@@ -954,6 +1024,36 @@ score = ayca_score(product_df, critical_days, miad_warning_days)
 
 
 # ============================================================
+# SAYFA NAVİGASYONU DURUMU
+# ============================================================
+PAGE_GENERAL = "🏠 Genel Performans"
+PAGE_STOCK = "📦 Stok Bitiş Tahmini"
+PAGE_ORDER = "🛒 Sipariş Asistanı"
+PAGE_MIAD = "⏳ Miad Takibi"
+PAGE_DEAD = "💀 Ölü Stok Analizi"
+PAGE_PROFIT = "💰 Kârlılık"
+PAGE_CATEGORY = "📊 Kategori Analizi"
+PAGE_REPORT = "📥 Rapor"
+
+PAGE_BY_KEY = {
+    "genel": PAGE_GENERAL,
+    "stok": PAGE_STOCK,
+    "siparis": PAGE_ORDER,
+    "miad": PAGE_MIAD,
+    "olu_stok": PAGE_DEAD,
+    "karlilik": PAGE_PROFIT,
+    "kategori": PAGE_CATEGORY,
+    "rapor": PAGE_REPORT,
+}
+
+if "aktif_sayfa" not in st.session_state:
+    st.session_state["aktif_sayfa"] = PAGE_GENERAL
+
+def go_page(page_name: str):
+    st.session_state["aktif_sayfa"] = page_name
+
+
+# ============================================================
 # HEADER
 # ============================================================
 today_str = datetime.now().strftime("%d.%m.%Y")
@@ -999,161 +1099,171 @@ st.markdown('<div class="section-title">Kritik Merkez</div>', unsafe_allow_html=
 
 r1, r2, r3, r4, r5 = st.columns(5)
 with r1:
-    make_mini_card("Kritik Stok", f"{len(critical_df)} ürün", f"{critical_days} gün ve altı", "alert-red")
+    make_clickable_mini_card("Kritik Stok", f"{len(critical_df)} ürün", f"{critical_days} gün ve altı", "alert-red", PAGE_STOCK, "Kritik stokları göster", "card_kritik_stok")
 with r2:
-    make_mini_card("Miad Uyarısı", f"{len(miad_df)} ürün", f"{miad_warning_days} gün içinde", "alert-orange")
+    make_clickable_mini_card("Miad Uyarısı", f"{len(miad_df)} ürün", f"{miad_warning_days} gün içinde", "alert-orange", PAGE_MIAD, "Miad listesini aç", "card_miad")
 with r3:
-    make_mini_card("Ölü Stok", money_fmt(dead_df["stok_degeri"].sum()), f"{dead_stock_days}+ gün / çıkış yok", "alert-purple")
+    make_clickable_mini_card("Ölü Stok", money_fmt(dead_df["stok_degeri"].sum()), f"{dead_stock_days}+ gün / çıkış yok", "alert-purple", PAGE_DEAD, "Ölü stokları incele", "card_olu_stok")
 with r4:
-    make_mini_card("Stok Değeri", money_fmt(total_stock_value), "Mevcut stok maliyeti", "alert-blue")
+    make_clickable_mini_card("Stok Değeri", money_fmt(total_stock_value), "Mevcut stok maliyeti", "alert-blue", PAGE_STOCK, "Stok analizine git", "card_stok_degeri")
 with r5:
-    make_mini_card("Sipariş Önerisi", f"{len(order_df)} ürün", money_fmt(order_df["onerilen_siparis_maliyeti"].sum()), "alert-green")
+    make_clickable_mini_card("Sipariş Önerisi", f"{len(order_df)} ürün", money_fmt(order_df["onerilen_siparis_maliyeti"].sum()), "alert-green", PAGE_ORDER, "Sipariş listesini aç", "card_siparis")
 
 
 # ============================================================
-# AYÇA AI YORUMU
+# ESKİ YATAY BÖLÜM MENÜSÜ
 # ============================================================
-ai_text = create_ai_comment(
-    df=period_df,
-    p=product_df,
-    critical_df=critical_df,
-    miad_df=miad_df,
-    dead_df=dead_df,
-    margin_df=low_margin_df,
-    current_ciro=current_ciro,
-    previous_ciro=previous_ciro,
+# Not:
+# Streamlit'in native st.tabs bileşeni dışarıdan programatik olarak
+# seçtirilemediği için burada aynı görünüm/mantığa yakın yatay radio kullanılır.
+# Kritik Merkez kartlarına basıldığında st.session_state["aktif_sayfa"] değişir;
+# yani alttaki bölüm sanki o sekmeye basılmış gibi açılır.
+
+st.markdown('<div style="height: 8px;"></div>', unsafe_allow_html=True)
+st.radio(
+    "Bölüm seçimi",
+    [PAGE_GENERAL, PAGE_STOCK, PAGE_ORDER, PAGE_MIAD, PAGE_DEAD, PAGE_PROFIT, PAGE_CATEGORY, PAGE_REPORT],
+    key="aktif_sayfa",
+    horizontal=True,
+    label_visibility="collapsed",
 )
 
-st.markdown(
-    f"""
-    <div class="ai-card">
-        <div class="ai-title">🤖 AYÇA AI Yorumu</div>
-        <div class="ai-text">
-            Günaydın {kullanici_adi}. {ai_text}
-        </div>
-    </div>
-    """,
-    unsafe_allow_html=True,
-)
+st.markdown('<div style="height: 12px;"></div>', unsafe_allow_html=True)
 
 
-# ============================================================
-# ANA GRAFİKLER
-# ============================================================
-st.markdown('<div class="section-title">Genel Performans</div>', unsafe_allow_html=True)
-
-daily = df.groupby("tarih", as_index=False).agg(
-    ciro=("ciro", "sum"),
-    brut_kar=("brut_kar", "sum"),
-    adet=("adet", "sum"),
-    islem=("fis", pd.Series.nunique),
-)
-
-monthly = df.copy()
-monthly["ay"] = monthly["tarih"].dt.to_period("M").astype(str)
-monthly_summary = monthly.groupby("ay", as_index=False).agg(
-    ciro=("ciro", "sum"),
-    brut_kar=("brut_kar", "sum"),
-    adet=("adet", "sum"),
-    islem=("fis", pd.Series.nunique),
-)
-monthly_summary["kar_marji"] = np.where(monthly_summary["ciro"] > 0, monthly_summary["brut_kar"] / monthly_summary["ciro"], 0)
-
-cat_summary = period_df.groupby("kategori", as_index=False).agg(
-    ciro=("ciro", "sum"),
-    brut_kar=("brut_kar", "sum"),
-    adet=("adet", "sum"),
-    islem=("fis", pd.Series.nunique),
-)
-cat_summary["kar_marji"] = np.where(cat_summary["ciro"] > 0, cat_summary["brut_kar"] / cat_summary["ciro"], 0)
-cat_summary = cat_summary.sort_values("ciro", ascending=False)
-
-g1, g2 = st.columns([1.35, 1])
-with g1:
-    fig = px.area(
-        monthly_summary,
-        x="ay",
-        y="ciro",
-        title="Aylık Ciro Trendi",
-        markers=True,
-        labels={"ay": "Ay", "ciro": "Ciro TL"},
+if st.session_state["aktif_sayfa"] == PAGE_GENERAL:
+    # ============================================================
+    # AYÇA AI YORUMU
+    # ============================================================
+    ai_text = create_ai_comment(
+        df=period_df,
+        p=product_df,
+        critical_df=critical_df,
+        miad_df=miad_df,
+        dead_df=dead_df,
+        margin_df=low_margin_df,
+        current_ciro=current_ciro,
+        previous_ciro=previous_ciro,
     )
-    fig.update_traces(line_color="#2563EB", fillcolor="rgba(37,99,235,0.12)")
-    st.plotly_chart(apply_plot_theme(fig, 360), use_container_width=True)
 
-with g2:
-    if not cat_summary.empty:
-        fig = px.pie(
-            cat_summary,
-            values="ciro",
-            names="kategori",
-            hole=0.55,
-            title="Kategori Ciro Dağılımı",
-            color_discrete_sequence=px.colors.qualitative.Set3,
+    st.markdown(
+        f"""
+        <div class="ai-card">
+            <div class="ai-title">🤖 AYÇA AI Yorumu</div>
+            <div class="ai-text">
+                Günaydın {kullanici_adi}. {ai_text}
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+    # ============================================================
+    # ANA GRAFİKLER
+    # ============================================================
+    st.markdown('<div class="section-title">Genel Performans</div>', unsafe_allow_html=True)
+
+    daily = df.groupby("tarih", as_index=False).agg(
+        ciro=("ciro", "sum"),
+        brut_kar=("brut_kar", "sum"),
+        adet=("adet", "sum"),
+        islem=("fis", pd.Series.nunique),
+    )
+
+    monthly = df.copy()
+    monthly["ay"] = monthly["tarih"].dt.to_period("M").astype(str)
+    monthly_summary = monthly.groupby("ay", as_index=False).agg(
+        ciro=("ciro", "sum"),
+        brut_kar=("brut_kar", "sum"),
+        adet=("adet", "sum"),
+        islem=("fis", pd.Series.nunique),
+    )
+    monthly_summary["kar_marji"] = np.where(monthly_summary["ciro"] > 0, monthly_summary["brut_kar"] / monthly_summary["ciro"], 0)
+
+    cat_summary = period_df.groupby("kategori", as_index=False).agg(
+        ciro=("ciro", "sum"),
+        brut_kar=("brut_kar", "sum"),
+        adet=("adet", "sum"),
+        islem=("fis", pd.Series.nunique),
+    )
+    cat_summary["kar_marji"] = np.where(cat_summary["ciro"] > 0, cat_summary["brut_kar"] / cat_summary["ciro"], 0)
+    cat_summary = cat_summary.sort_values("ciro", ascending=False)
+
+    g1, g2 = st.columns([1.35, 1])
+    with g1:
+        fig = px.area(
+            monthly_summary,
+            x="ay",
+            y="ciro",
+            title="Aylık Ciro Trendi",
+            markers=True,
+            labels={"ay": "Ay", "ciro": "Ciro TL"},
         )
+        fig.update_traces(line_color="#2563EB", fillcolor="rgba(37,99,235,0.12)")
         st.plotly_chart(apply_plot_theme(fig, 360), use_container_width=True)
 
+    with g2:
+        if not cat_summary.empty:
+            fig = px.pie(
+                cat_summary,
+                values="ciro",
+                names="kategori",
+                hole=0.55,
+                title="Kategori Ciro Dağılımı",
+                color_discrete_sequence=px.colors.qualitative.Set3,
+            )
+            st.plotly_chart(apply_plot_theme(fig, 360), use_container_width=True)
 
-g3, g4 = st.columns(2)
-with g3:
-    top_products = period_df.groupby("urun", as_index=False).agg(
-        ciro=("ciro", "sum"),
-        adet=("adet", "sum"),
-        brut_kar=("brut_kar", "sum"),
-    ).sort_values("ciro", ascending=False).head(12)
 
-    fig = px.bar(
-        top_products.sort_values("ciro"),
-        x="ciro",
-        y="urun",
-        orientation="h",
-        title="En Çok Ciro Getiren Ürünler",
-        labels={"ciro": "Ciro TL", "urun": "Ürün"},
-        color="ciro",
-        color_continuous_scale=["#DBEAFE", "#2563EB"],
-    )
-    st.plotly_chart(apply_plot_theme(fig, 430), use_container_width=True)
+    g3, g4 = st.columns(2)
+    with g3:
+        top_products = period_df.groupby("urun", as_index=False).agg(
+            ciro=("ciro", "sum"),
+            adet=("adet", "sum"),
+            brut_kar=("brut_kar", "sum"),
+        ).sort_values("ciro", ascending=False).head(12)
 
-with g4:
-    profit_products = period_df.groupby("urun", as_index=False).agg(
-        brut_kar=("brut_kar", "sum"),
-        ciro=("ciro", "sum"),
-        adet=("adet", "sum"),
-    ).sort_values("brut_kar", ascending=False).head(12)
+        fig = px.bar(
+            top_products.sort_values("ciro"),
+            x="ciro",
+            y="urun",
+            orientation="h",
+            title="En Çok Ciro Getiren Ürünler",
+            labels={"ciro": "Ciro TL", "urun": "Ürün"},
+            color="ciro",
+            color_continuous_scale=["#DBEAFE", "#2563EB"],
+        )
+        st.plotly_chart(apply_plot_theme(fig, 430), use_container_width=True)
 
-    fig = px.bar(
-        profit_products.sort_values("brut_kar"),
-        x="brut_kar",
-        y="urun",
-        orientation="h",
-        title="En Karlı Ürünler",
-        labels={"brut_kar": "Brüt Kâr TL", "urun": "Ürün"},
-        color="brut_kar",
-        color_continuous_scale=["#DCFCE7", "#10B981"],
-    )
-    st.plotly_chart(apply_plot_theme(fig, 430), use_container_width=True)
+    with g4:
+        profit_products = period_df.groupby("urun", as_index=False).agg(
+            brut_kar=("brut_kar", "sum"),
+            ciro=("ciro", "sum"),
+            adet=("adet", "sum"),
+        ).sort_values("brut_kar", ascending=False).head(12)
+
+        fig = px.bar(
+            profit_products.sort_values("brut_kar"),
+            x="brut_kar",
+            y="urun",
+            orientation="h",
+            title="En Karlı Ürünler",
+            labels={"brut_kar": "Brüt Kâr TL", "urun": "Ürün"},
+            color="brut_kar",
+            color_continuous_scale=["#DCFCE7", "#10B981"],
+        )
+        st.plotly_chart(apply_plot_theme(fig, 430), use_container_width=True)
 
 
 # ============================================================
-# SEKMELER
+# SAYFA İÇERİKLERİ
 # ============================================================
-tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs(
-    [
-        "📦 Stok Bitiş Tahmini",
-        "🛒 Sipariş Asistanı",
-        "⏳ Miad Takibi",
-        "💀 Ölü Stok Analizi",
-        "💰 Kârlılık",
-        "📊 Kategori Analizi",
-        "📥 Rapor",
-    ]
-)
-
 
 # ------------------------------------------------------------
 # TAB 1 - STOK BİTİŞ TAHMİNİ
 # ------------------------------------------------------------
-with tab1:
+if st.session_state["aktif_sayfa"] == PAGE_STOCK:
     st.markdown('<div class="section-title">📦 Stok Bitiş Tahmini</div>', unsafe_allow_html=True)
 
     view = product_df.copy()
@@ -1217,7 +1327,7 @@ with tab1:
 # ------------------------------------------------------------
 # TAB 2 - SİPARİŞ ASİSTANI
 # ------------------------------------------------------------
-with tab2:
+if st.session_state["aktif_sayfa"] == PAGE_ORDER:
     st.markdown('<div class="section-title">🛒 Sipariş Asistanı</div>', unsafe_allow_html=True)
 
     st.info("Sipariş önerisi; son 60 gün çıkış hızına ve mevcut stok bitiş süresine göre hesaplanır.")
@@ -1275,7 +1385,7 @@ with tab2:
 # ------------------------------------------------------------
 # TAB 3 - MİAD TAKİBİ
 # ------------------------------------------------------------
-with tab3:
+if st.session_state["aktif_sayfa"] == PAGE_MIAD:
     st.markdown('<div class="section-title">⏳ Miad Takibi</div>', unsafe_allow_html=True)
 
     miad_filter = st.radio(
@@ -1370,7 +1480,7 @@ with tab3:
 # ------------------------------------------------------------
 # TAB 4 - ÖLÜ STOK ANALİZİ
 # ------------------------------------------------------------
-with tab4:
+if st.session_state["aktif_sayfa"] == PAGE_DEAD:
     st.markdown('<div class="section-title">💀 Ölü Stok Analizi</div>', unsafe_allow_html=True)
 
     dead_mode = st.radio(
@@ -1454,7 +1564,7 @@ with tab4:
 # ------------------------------------------------------------
 # TAB 5 - KÂRLILIK
 # ------------------------------------------------------------
-with tab5:
+if st.session_state["aktif_sayfa"] == PAGE_PROFIT:
     st.markdown('<div class="section-title">💰 Kârlılık Analizi</div>', unsafe_allow_html=True)
 
     p_profit = product_df.copy()
@@ -1519,7 +1629,7 @@ with tab5:
 # ------------------------------------------------------------
 # TAB 6 - KATEGORİ ANALİZİ
 # ------------------------------------------------------------
-with tab6:
+if st.session_state["aktif_sayfa"] == PAGE_CATEGORY:
     st.markdown('<div class="section-title">📊 Kategori Analizi</div>', unsafe_allow_html=True)
 
     cat_all = df.groupby("kategori", as_index=False).agg(
@@ -1568,7 +1678,7 @@ with tab6:
 # ------------------------------------------------------------
 # TAB 7 - RAPOR
 # ------------------------------------------------------------
-with tab7:
+if st.session_state["aktif_sayfa"] == PAGE_REPORT:
     st.markdown('<div class="section-title">📥 Rapor ve Veri Kontrol</div>', unsafe_allow_html=True)
 
     st.write("Analiz sonucunu Excel olarak indirebilirsiniz.")
