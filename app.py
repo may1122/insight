@@ -381,6 +381,32 @@ st.markdown(
         color: var(--blue);
     }
 
+
+
+    .click-card-link {
+        display: block;
+        text-decoration: none !important;
+        color: inherit !important;
+    }
+
+    .click-card-link .mini-card {
+        cursor: pointer;
+        transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
+    }
+
+    .click-card-link:hover .mini-card {
+        transform: translateY(-4px);
+        box-shadow: 0 16px 34px rgba(15, 23, 42, 0.12);
+        border-color: #2563EB;
+    }
+
+    .click-card-hint {
+        margin-top: 8px;
+        color: #2563EB;
+        font-size: 12px;
+        font-weight: 900;
+    }
+
     .small-muted {
         color: var(--muted);
         font-size: 13px;
@@ -536,6 +562,25 @@ def make_mini_card(title, value, note, css_class=""):
             <div class="mini-value">{value}</div>
             <div class="mini-note">{note}</div>
         </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def make_clickable_mini_card(title, value, note, css_class="", page_key="genel", hint="Detaya git"):
+    """Kritik Merkez kartını tıklanabilir yapar.
+    HTML anchor kullanır; tıklanınca URL query parametresi değişir ve ilgili bölüm açılır.
+    """
+    st.markdown(
+        f"""
+        <a class="click-card-link" href="?page={page_key}">
+            <div class="mini-card {css_class}">
+                <div class="mini-title">{title}</div>
+                <div class="mini-value">{value}</div>
+                <div class="mini-note">{note}</div>
+                <div class="click-card-hint">{hint} →</div>
+            </div>
+        </a>
         """,
         unsafe_allow_html=True,
     )
@@ -966,8 +1011,24 @@ PAGE_PROFIT = "💰 Kârlılık"
 PAGE_CATEGORY = "📊 Kategori Analizi"
 PAGE_REPORT = "📥 Rapor"
 
+PAGE_BY_KEY = {
+    "genel": PAGE_GENERAL,
+    "stok": PAGE_STOCK,
+    "siparis": PAGE_ORDER,
+    "miad": PAGE_MIAD,
+    "olu_stok": PAGE_DEAD,
+    "karlilik": PAGE_PROFIT,
+    "kategori": PAGE_CATEGORY,
+    "rapor": PAGE_REPORT,
+}
+
 if "aktif_sayfa" not in st.session_state:
     st.session_state["aktif_sayfa"] = PAGE_GENERAL
+
+# Kritik Merkez kartlarından gelen tıklamayı yakala.
+query_page = st.query_params.get("page", None)
+if query_page in PAGE_BY_KEY:
+    st.session_state["aktif_sayfa"] = PAGE_BY_KEY[query_page]
 
 
 def go_page(page_name: str):
@@ -1020,42 +1081,22 @@ st.markdown('<div class="section-title">Kritik Merkez</div>', unsafe_allow_html=
 
 r1, r2, r3, r4, r5 = st.columns(5)
 with r1:
-    make_mini_card("Kritik Stok", f"{len(critical_df)} ürün", f"{critical_days} gün ve altı", "alert-red")
+    make_clickable_mini_card("Kritik Stok", f"{len(critical_df)} ürün", f"{critical_days} gün ve altı", "alert-red", "stok", "Kritik stokları göster")
 with r2:
-    make_mini_card("Miad Uyarısı", f"{len(miad_df)} ürün", f"{miad_warning_days} gün içinde", "alert-orange")
+    make_clickable_mini_card("Miad Uyarısı", f"{len(miad_df)} ürün", f"{miad_warning_days} gün içinde", "alert-orange", "miad", "Miad listesini aç")
 with r3:
-    make_mini_card("Ölü Stok", money_fmt(dead_df["stok_degeri"].sum()), f"{dead_stock_days}+ gün / çıkış yok", "alert-purple")
+    make_clickable_mini_card("Ölü Stok", money_fmt(dead_df["stok_degeri"].sum()), f"{dead_stock_days}+ gün / çıkış yok", "alert-purple", "olu_stok", "Ölü stokları incele")
 with r4:
-    make_mini_card("Stok Değeri", money_fmt(total_stock_value), "Mevcut stok maliyeti", "alert-blue")
+    make_clickable_mini_card("Stok Değeri", money_fmt(total_stock_value), "Mevcut stok maliyeti", "alert-blue", "stok", "Stok analizine git")
 with r5:
-    make_mini_card("Sipariş Önerisi", f"{len(order_df)} ürün", money_fmt(order_df["onerilen_siparis_maliyeti"].sum()), "alert-green")
+    make_clickable_mini_card("Sipariş Önerisi", f"{len(order_df)} ürün", money_fmt(order_df["onerilen_siparis_maliyeti"].sum()), "alert-green", "siparis", "Sipariş listesini aç")
 
 
 # ============================================================
-# HIZLI ERİŞİM BUTONLARI
+# SIDEBAR SAYFA SEÇİMİ
 # ============================================================
-st.markdown('<div class="section-title">Hızlı Erişim</div>', unsafe_allow_html=True)
-
-nav1, nav2, nav3, nav4, nav5, nav6, nav7, nav8 = st.columns(8)
-with nav1:
-    st.button("🏠 Genel", use_container_width=True, on_click=go_page, args=(PAGE_GENERAL,))
-with nav2:
-    st.button("🔴 Kritik Stok", use_container_width=True, on_click=go_page, args=(PAGE_STOCK,))
-with nav3:
-    st.button("🛒 Sipariş", use_container_width=True, on_click=go_page, args=(PAGE_ORDER,))
-with nav4:
-    st.button("⏳ Miad", use_container_width=True, on_click=go_page, args=(PAGE_MIAD,))
-with nav5:
-    st.button("💀 Ölü Stok", use_container_width=True, on_click=go_page, args=(PAGE_DEAD,))
-with nav6:
-    st.button("💰 Kârlılık", use_container_width=True, on_click=go_page, args=(PAGE_PROFIT,))
-with nav7:
-    st.button("📊 Kategori", use_container_width=True, on_click=go_page, args=(PAGE_CATEGORY,))
-with nav8:
-    st.button("📥 Rapor", use_container_width=True, on_click=go_page, args=(PAGE_REPORT,))
-
 st.sidebar.markdown("---")
-st.sidebar.subheader("Sayfa")
+st.sidebar.subheader("Bölümler")
 st.sidebar.radio(
     "Gitmek istediğiniz bölüm",
     [PAGE_GENERAL, PAGE_STOCK, PAGE_ORDER, PAGE_MIAD, PAGE_DEAD, PAGE_PROFIT, PAGE_CATEGORY, PAGE_REPORT],
