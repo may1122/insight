@@ -1,6 +1,6 @@
 
 # ============================================================
-# AYÇA Insight V4.2 Soft
+# AYÇA Insight V5.0 Executive Demo
 # Eczanenin Dijital Yönetim Paneli
 # Revizyon: Demo giriş/kayıt ekranı eklendi; Kritik Merkez kartları aktif bölüm değiştirir; eski yatay bölüm menüsü korunur
 # ------------------------------------------------------------
@@ -43,6 +43,7 @@ from __future__ import annotations
 import re
 from datetime import datetime
 from io import BytesIO
+from html import escape
 from typing import Optional
 
 import numpy as np
@@ -56,7 +57,7 @@ import streamlit as st
 # STREAMLIT AYARI
 # ============================================================
 st.set_page_config(
-    page_title="AYÇA Insight V4.2",
+    page_title="AYÇA Insight V5.0",
     page_icon="💊",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -442,6 +443,32 @@ st.markdown(
         border-color: #BFDBFE;
         color: var(--blue);
     }
+
+
+    /* V5 Executive Dashboard */
+    .exec-grid { display: grid; grid-template-columns: 1.25fr .75fr; gap: 16px; margin: 14px 0 18px 0; }
+    .exec-card { background: linear-gradient(135deg, #FFFFFF 0%, #EFF6FF 100%); border: 1px solid #BFDBFE; border-radius: 24px; padding: 20px; box-shadow: 0 14px 34px rgba(37, 99, 235, 0.08); }
+    .exec-title { color: #0F172A; font-size: 22px; font-weight: 950; letter-spacing: -0.4px; margin-bottom: 8px; }
+    .exec-sub { color: #64748B; font-size: 14px; line-height: 1.55; margin-bottom: 14px; }
+    .exec-list-item { background: rgba(255,255,255,.78); border: 1px solid rgba(226,232,240,.95); border-radius: 16px; padding: 12px 13px; margin: 9px 0; font-size: 14px; color: #0F172A; line-height: 1.45; font-weight: 700; }
+    .score-big { font-size: 54px; font-weight: 950; letter-spacing: -2px; color: #2563EB; line-height: 1; margin: 4px 0 8px 0; }
+    .score-label { color: #64748B; font-size: 13px; font-weight: 850; text-transform: uppercase; letter-spacing: .35px; }
+    .health-row { margin: 12px 0; }
+    .health-head { display: flex; justify-content: space-between; color: #334155; font-weight: 900; font-size: 13px; margin-bottom: 6px; }
+    .health-bar-bg { width: 100%; height: 10px; background: #E2E8F0; border-radius: 999px; overflow: hidden; }
+    .health-bar-fill { height: 10px; border-radius: 999px; background: linear-gradient(90deg, #2563EB, #10B981); }
+    .radar-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin: 12px 0 18px 0; }
+    .radar-card { background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 18px; padding: 15px; box-shadow: 0 10px 26px rgba(15, 23, 42, 0.05); min-height: 110px; }
+    .radar-title { color: #64748B; font-size: 12px; font-weight: 900; text-transform: uppercase; letter-spacing: .35px; margin-bottom: 9px; }
+    .radar-value { color: #0F172A; font-size: 24px; font-weight: 950; margin-bottom: 5px; }
+    .radar-note { color: #64748B; font-size: 13px; line-height: 1.35; }
+    .task-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 14px 0 18px 0; }
+    .task-card, .lost-card { background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 22px; padding: 18px; box-shadow: 0 12px 30px rgba(15, 23, 42, 0.05); }
+    .task-item { border-bottom: 1px solid #E2E8F0; padding: 10px 0; color: #0F172A; font-size: 14px; font-weight: 750; line-height: 1.45; }
+    .task-item:last-child { border-bottom: 0; }
+    .lost-number { font-size: 34px; font-weight: 950; color: #B91C1C; letter-spacing: -1px; margin: 4px 0; }
+    @media (max-width: 1000px) { .exec-grid, .task-grid { grid-template-columns: 1fr; } .radar-grid { grid-template-columns: 1fr 1fr; } }
+
     </style>
     """,
     unsafe_allow_html=True,
@@ -1140,6 +1167,153 @@ def create_excel_report(df, p, critical_df, miad_df, dead_df, order_df):
     return output.getvalue()
 
 
+
+
+# ============================================================
+# V5 EXECUTIVE DASHBOARD YARDIMCI FONKSİYONLAR
+# ============================================================
+def clamp_score(value) -> int:
+    try:
+        return int(max(0, min(100, round(float(value)))))
+    except Exception:
+        return 0
+
+
+def score_status(score_value: int) -> str:
+    if score_value >= 80:
+        return "Güçlü"
+    if score_value >= 60:
+        return "Takip edilmeli"
+    return "Riskli"
+
+
+def calculate_health_scores(product_df, period_df, previous_period_df, current_margin, previous_margin, critical_days, miad_warning_days):
+    total_products = max(1, len(product_df))
+    critical_ratio = len(product_df[(product_df["gunluk_tuketim_60"] > 0) & (product_df["tahmini_bitis_gunu"] <= critical_days)]) / total_products
+    miad_ratio = len(product_df[(product_df["miad_kalan_gun"].notna()) & (product_df["miad_kalan_gun"] <= miad_warning_days)]) / total_products
+    dead_ratio = len(product_df[product_df["olu_stok_mu"]]) / total_products
+    low_margin_ratio = len(product_df[(product_df["toplam_ciro"] > 0) & (product_df["kar_marji"] < 0.12)]) / total_products
+    current_ciro_local = period_df["ciro"].sum() if not period_df.empty else 0
+    previous_ciro_local = previous_period_df["ciro"].sum() if not previous_period_df.empty else 0
+    if previous_ciro_local > 0:
+        sales_trend = (current_ciro_local - previous_ciro_local) / previous_ciro_local
+        sales_score = 70 + (sales_trend * 45)
+    else:
+        sales_score = 72 if current_ciro_local > 0 else 50
+    margin_delta = current_margin - previous_margin if previous_margin > 0 else current_margin
+    profitability_score = 70 + (current_margin * 80) + (margin_delta * 40) - (low_margin_ratio * 30)
+    return {
+        "Karlılık": clamp_score(profitability_score),
+        "Stok Yönetimi": clamp_score(100 - (critical_ratio * 75) - (dead_ratio * 30)),
+        "Miad Yönetimi": clamp_score(100 - (miad_ratio * 90)),
+        "Satış Performansı": clamp_score(sales_score),
+        "Nakit Verimliliği": clamp_score(100 - (dead_ratio * 70) - (critical_ratio * 20)),
+    }
+
+
+def best_growth_category(period_df, prev_df):
+    if period_df.empty:
+        return None, 0
+    current = period_df.groupby("kategori")["ciro"].sum().sort_values(ascending=False)
+    if current.empty:
+        return None, 0
+    prev = prev_df.groupby("kategori")["ciro"].sum() if not prev_df.empty else pd.Series(dtype=float)
+    best_cat = current.index[0]
+    best_rate = -999
+    for cat, val in current.items():
+        prev_val = float(prev.get(cat, 0)) if len(prev) else 0
+        rate = (float(val) - prev_val) / prev_val if prev_val > 0 else 0.0
+        if rate > best_rate:
+            best_cat = cat
+            best_rate = rate
+    return best_cat, best_rate
+
+
+def missed_profit_analysis(product_df, warning_days):
+    p = product_df.copy()
+    risk = p[(p["gunluk_tuketim_60"] > 0) & (p["tahmini_bitis_gunu"].replace(np.inf, np.nan).notna())].copy()
+    risk = risk[risk["tahmini_bitis_gunu"] <= warning_days]
+    if risk.empty:
+        return 0, 0, 0
+    risk["riskli_gun"] = (warning_days - risk["tahmini_bitis_gunu"]).clip(lower=0)
+    risk["tahmini_kacirilan_ciro"] = risk["riskli_gun"] * risk["gunluk_tuketim_60"] * risk["ort_satis_birim"].fillna(0)
+    risk["tahmini_kacirilan_kar"] = risk["tahmini_kacirilan_ciro"] * risk["kar_marji"].clip(lower=0, upper=0.75).fillna(0)
+    return int(len(risk)), float(risk["tahmini_kacirilan_ciro"].sum()), float(risk["tahmini_kacirilan_kar"].sum())
+
+
+def build_today_tasks(critical_df, miad_df, dead_df, low_margin_df, order_df, period_df, prev_df):
+    tasks = []
+    if not critical_df.empty:
+        row = critical_df.sort_values("tahmini_bitis_gunu").iloc[0]
+        tasks.append(f"☐ {escape(str(row['urun']))} için stok kontrolü yap; yaklaşık {num_fmt(row['tahmini_bitis_gunu'], 0)} gün içinde bitebilir.")
+    if not miad_df.empty:
+        row = miad_df.sort_values("miad_kalan_gun").iloc[0]
+        tasks.append(f"☐ {escape(str(row['urun']))} ürününü ön rafa al; miada {num_fmt(row['miad_kalan_gun'], 0)} gün kaldı.")
+    if not dead_df.empty:
+        row = dead_df.sort_values("stok_degeri", ascending=False).iloc[0]
+        tasks.append(f"☐ {escape(str(row['urun']))} için ölü stok aksiyonu planla; bağlı para {money_fmt(row['stok_degeri'])}.")
+    if not order_df.empty:
+        tasks.append(f"☐ Sipariş asistanındaki {len(order_df)} ürün için tedarikçi kontrolü yap.")
+    if not low_margin_df.empty:
+        row = low_margin_df.sort_values("kar_marji").iloc[0]
+        tasks.append(f"☐ {escape(str(row['urun']))} ürününde fiyat/maliyet kontrolü yap; marj düşük görünüyor.")
+    top_cat, rate = best_growth_category(period_df, prev_df)
+    if top_cat:
+        if rate > 0:
+            tasks.append(f"☐ {escape(str(top_cat))} kategorisini takip et; önceki döneme göre {pct_fmt(rate)} büyüme sinyali var.")
+        else:
+            tasks.append(f"☐ {escape(str(top_cat))} kategorisini takip et; güncel dönemin en yüksek ciro katkısı burada.")
+    fallback = [
+        "☐ Kritik stok listesini kontrol et.",
+        "☐ Miadı yaklaşan ürünleri raf önceliğine al.",
+        "☐ Ölü stok değerini azaltacak aksiyon belirle.",
+        "☐ Düşük marjlı ürünlerde fiyat/maliyet kontrolü yap.",
+        "☐ Gün sonunda satış ve stok dengesini tekrar incele.",
+    ]
+    for item in fallback:
+        if len(tasks) >= 5:
+            break
+        tasks.append(item)
+    return tasks[:5]
+
+
+def render_executive_dashboard(kullanici_adi, score, product_df, period_df, prev_df, critical_df, miad_df, dead_df, low_margin_df, order_df, current_margin, previous_margin, critical_days, miad_warning_days, warning_days):
+    health = calculate_health_scores(product_df, period_df, prev_df, current_margin, previous_margin, critical_days, miad_warning_days)
+    lost_count, lost_revenue, lost_profit = missed_profit_analysis(product_df, warning_days)
+    tasks = build_today_tasks(critical_df, miad_df, dead_df, low_margin_df, order_df, period_df, prev_df)
+    top_cat, cat_rate = best_growth_category(period_df, prev_df)
+
+    if not critical_df.empty:
+        first_critical = critical_df.sort_values("tahmini_bitis_gunu").iloc[0]
+        critical_line = f"🔴 <b>{escape(str(first_critical['urun']))}</b> yaklaşık {num_fmt(first_critical['tahmini_bitis_gunu'], 0)} gün içinde kritik seviyeye düşebilir."
+    else:
+        critical_line = "🟢 Kritik stok baskısı düşük görünüyor."
+    if not miad_df.empty:
+        first_miad = miad_df.sort_values("miad_kalan_gun").iloc[0]
+        miad_line = f"🟠 <b>{escape(str(first_miad['urun']))}</b> için miada {num_fmt(first_miad['miad_kalan_gun'], 0)} gün kaldı."
+    else:
+        miad_line = "🟢 Seçilen eşiğe göre yakın miad riski düşük."
+    dead_line = f"💀 Ölü/hareketsiz stokta <b>{money_fmt(dead_df['stok_degeri'].sum())}</b> bağlı para var." if not dead_df.empty else "🟢 Ölü stok baskısı düşük görünüyor."
+    order_line = f"🛒 Sipariş asistanı <b>{len(order_df)} ürün</b> için aksiyon öneriyor." if not order_df.empty else "🟢 Sipariş eşiğine takılan ürün görünmüyor."
+    category_line = f"📈 <b>{escape(str(top_cat))}</b> kategorisi güncel dönemde öne çıkıyor." if top_cat else "📈 Kategori hareketi için yeterli veri bekleniyor."
+
+    health_html = "".join([f'''<div class="health-row"><div class="health-head"><span>{escape(name)}</span><span>{val}/100</span></div><div class="health-bar-bg"><div class="health-bar-fill" style="width:{val}%;"></div></div></div>''' for name, val in health.items()])
+    tasks_html = "".join([f'<div class="task-item">{task}</div>' for task in tasks])
+
+    st.markdown(f'''
+        <div class="exec-grid"><div class="exec-card"><div class="exec-title">🤖 Günaydın {escape(str(kullanici_adi))}</div><div class="exec-sub">Bugün dikkat etmeniz gereken 5 ana konu aşağıda özetlendi. AYÇA bu alanı stok, miad, satış ve kârlılık verilerinden otomatik yorumlar.</div><div class="exec-list-item">{critical_line}</div><div class="exec-list-item">{miad_line}</div><div class="exec-list-item">{dead_line}</div><div class="exec-list-item">{order_line}</div><div class="exec-list-item">{category_line}</div></div><div class="exec-card"><div class="score-label">Eczane Sağlık Skoru</div><div class="score-big">{score}</div><div class="exec-sub">Durum: <b>{score_status(score)}</b>. Skor; stok, miad, ölü stok ve kârlılık risklerine göre hesaplanır.</div>{health_html}</div></div>
+    ''', unsafe_allow_html=True)
+
+    st.markdown('<div class="section-title">AYÇA Radar Merkezi</div>', unsafe_allow_html=True)
+    st.markdown(f'''
+        <div class="radar-grid"><div class="radar-card"><div class="radar-title">Kritik Stok</div><div class="radar-value">🔴 {len(critical_df)}</div><div class="radar-note">{critical_days} gün ve altı</div></div><div class="radar-card"><div class="radar-title">Miad Riski</div><div class="radar-value">🟠 {len(miad_df)}</div><div class="radar-note">{miad_warning_days} gün içinde</div></div><div class="radar-card"><div class="radar-title">Ölü Stok</div><div class="radar-value">💀 {len(dead_df)}</div><div class="radar-note">{money_fmt(dead_df['stok_degeri'].sum())}</div></div><div class="radar-card"><div class="radar-title">Karlılık</div><div class="radar-value">💰 {pct_fmt(current_margin)}</div><div class="radar-note">Dönem brüt marjı</div></div><div class="radar-card"><div class="radar-title">Sipariş</div><div class="radar-value">🛒 {len(order_df)}</div><div class="radar-note">Öneri bekleyen ürün</div></div></div>
+    ''', unsafe_allow_html=True)
+
+    st.markdown(f'''
+        <div class="task-grid"><div class="task-card"><div class="exec-title" style="font-size:20px;">✅ Bugün Ne Yapmalıyım?</div><div class="exec-sub">Eczacı için günlük aksiyon listesi.</div>{tasks_html}</div><div class="lost-card"><div class="exec-title" style="font-size:20px;">💰 Kaçırılan Kâr Analizi</div><div class="exec-sub">Bu demo model, stok bitiş riski olan ürünlerde yaklaşık ciro/kâr kaybı ihtimalini hesaplar.</div><div class="score-label">Riskli ürün sayısı</div><div class="lost-number">{lost_count}</div><div class="exec-list-item">Tahmini kaçırılan ciro: <b>{money_fmt(lost_revenue)}</b></div><div class="exec-list-item">Tahmini kaçırılan kâr: <b>{money_fmt(lost_profit)}</b></div></div></div>
+    ''', unsafe_allow_html=True)
+
+
 # ============================================================
 # SIDEBAR
 # ============================================================
@@ -1152,7 +1326,7 @@ if st.sidebar.button("Çıkış Yap", use_container_width=True):
     safe_rerun()
 
 st.sidebar.title("💊 AYÇA Insight")
-st.sidebar.caption("V4.2 Soft Dashboard")
+st.sidebar.caption("V5.0 Executive Demo")
 
 eczane_adi = st.sidebar.text_input("Eczane Adı", value="İdil Eczanesi")
 kullanici_adi = st.sidebar.text_input("Kullanıcı", value="Abdullah Bey")
@@ -1187,7 +1361,7 @@ if uploaded_file is None:
         """
         <div class="ayca-header">
             <div class="ayca-title">
-                <h1>AYÇA Insight V4.2</h1>
+                <h1>AYÇA Insight V5.0</h1>
                 <p>Soft dashboard · Excel yükleyerek dinamik analiz alın.</p>
             </div>
             <div class="header-pill">Dosya bekleniyor</div>
@@ -1325,7 +1499,7 @@ st.markdown(
     f"""
     <div class="ayca-header">
         <div class="ayca-title">
-            <h1>AYÇA Insight V4.2</h1>
+            <h1>AYÇA Insight V5.0</h1>
             <p>{eczane_adi} · {selected_period} · Sayfa: {active_sheet} · {today_str} · {get_membership()} Demo</p>
         </div>
         <div class="header-pill">AYÇA Skoru: {score}/100</div>
@@ -1365,6 +1539,31 @@ with k4:
     make_metric_card("İşlem Sayısı", f"{current_transactions}", "Fiş/Reçete tekil", None)
 with k5:
     make_metric_card("Ortalama Sepet", money_fmt(avg_basket), "Ciro / işlem", basket_trend, basket_class)
+
+
+
+
+# ============================================================
+# V5 EXECUTIVE DASHBOARD
+# ============================================================
+if st.session_state.get("aktif_sayfa", PAGE_GENERAL) == PAGE_GENERAL:
+    render_executive_dashboard(
+        kullanici_adi=kullanici_adi,
+        score=score,
+        product_df=product_df,
+        period_df=period_df,
+        prev_df=prev_df,
+        critical_df=critical_df,
+        miad_df=miad_df,
+        dead_df=dead_df,
+        low_margin_df=low_margin_df,
+        order_df=order_df,
+        current_margin=current_margin,
+        previous_margin=previous_margin,
+        critical_days=critical_days,
+        miad_warning_days=miad_warning_days,
+        warning_days=warning_days,
+    )
 
 
 # ============================================================
