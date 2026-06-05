@@ -374,11 +374,23 @@ st.markdown(
         font-weight: 900;
     }
 
-    .stButton > button:hover,
+     .stButton > button:hover,
     .stDownloadButton > button:hover {
         border-color: var(--blue);
         background: var(--blue-soft);
         color: var(--blue);
+    }
+
+    /* Kritik Merkez kartları artık gerçek Streamlit butonudur. */
+    div[data-testid="stHorizontalBlock"] .stButton > button {
+        min-height: 132px;
+        border-radius: 20px;
+        padding: 18px;
+        text-align: left;
+        white-space: pre-line;
+        font-size: 15px;
+        line-height: 1.45;
+        box-shadow: 0 10px 26px rgba(15, 23, 42, 0.05);
     }
 
 
@@ -567,23 +579,16 @@ def make_mini_card(title, value, note, css_class=""):
     )
 
 
-def make_clickable_mini_card(title, value, note, css_class="", page_key="genel", hint="Detaya git"):
-    """Kritik Merkez kartını tıklanabilir yapar.
-    HTML anchor kullanır; tıklanınca URL query parametresi değişir ve ilgili bölüm açılır.
+def make_clickable_mini_card(title, value, note, css_class="", page_name=None, hint="Detayı göster", key=None):
     """
-    st.markdown(
-        f"""
-        <a class="click-card-link" href="?page={page_key}">
-            <div class="mini-card {css_class}">
-                <div class="mini-title">{title}</div>
-                <div class="mini-value">{value}</div>
-                <div class="mini-note">{note}</div>
-                <div class="click-card-hint">{hint} →</div>
-            </div>
-        </a>
-        """,
-        unsafe_allow_html=True,
-    )
+    Kritik Merkez kartını gerçek Streamlit butonu gibi çalıştırır.
+    URL değiştirmez, başka sekmeye atmaz; sadece session_state içindeki aktif sayfayı değiştirir.
+    """
+    label = f"{title}\n\n{value}\n{note}\n{hint} →"
+    clicked = st.button(label, key=key or f"card_{normalize_col_name(title)}", use_container_width=True)
+    if clicked and page_name is not None:
+        st.session_state["aktif_sayfa"] = page_name
+        st.rerun()
 
 
 def sparkline(values, color="#2563EB"):
@@ -1025,12 +1030,6 @@ PAGE_BY_KEY = {
 if "aktif_sayfa" not in st.session_state:
     st.session_state["aktif_sayfa"] = PAGE_GENERAL
 
-# Kritik Merkez kartlarından gelen tıklamayı yakala.
-query_page = st.query_params.get("page", None)
-if query_page in PAGE_BY_KEY:
-    st.session_state["aktif_sayfa"] = PAGE_BY_KEY[query_page]
-
-
 def go_page(page_name: str):
     st.session_state["aktif_sayfa"] = page_name
 
@@ -1081,15 +1080,15 @@ st.markdown('<div class="section-title">Kritik Merkez</div>', unsafe_allow_html=
 
 r1, r2, r3, r4, r5 = st.columns(5)
 with r1:
-    make_clickable_mini_card("Kritik Stok", f"{len(critical_df)} ürün", f"{critical_days} gün ve altı", "alert-red", "stok", "Kritik stokları göster")
+    make_clickable_mini_card("Kritik Stok", f"{len(critical_df)} ürün", f"{critical_days} gün ve altı", "alert-red", PAGE_STOCK, "Kritik stokları göster", "card_kritik_stok")
 with r2:
-    make_clickable_mini_card("Miad Uyarısı", f"{len(miad_df)} ürün", f"{miad_warning_days} gün içinde", "alert-orange", "miad", "Miad listesini aç")
+    make_clickable_mini_card("Miad Uyarısı", f"{len(miad_df)} ürün", f"{miad_warning_days} gün içinde", "alert-orange", PAGE_MIAD, "Miad listesini aç", "card_miad")
 with r3:
-    make_clickable_mini_card("Ölü Stok", money_fmt(dead_df["stok_degeri"].sum()), f"{dead_stock_days}+ gün / çıkış yok", "alert-purple", "olu_stok", "Ölü stokları incele")
+    make_clickable_mini_card("Ölü Stok", money_fmt(dead_df["stok_degeri"].sum()), f"{dead_stock_days}+ gün / çıkış yok", "alert-purple", PAGE_DEAD, "Ölü stokları incele", "card_olu_stok")
 with r4:
-    make_clickable_mini_card("Stok Değeri", money_fmt(total_stock_value), "Mevcut stok maliyeti", "alert-blue", "stok", "Stok analizine git")
+    make_clickable_mini_card("Stok Değeri", money_fmt(total_stock_value), "Mevcut stok maliyeti", "alert-blue", PAGE_STOCK, "Stok analizine git", "card_stok_degeri")
 with r5:
-    make_clickable_mini_card("Sipariş Önerisi", f"{len(order_df)} ürün", money_fmt(order_df["onerilen_siparis_maliyeti"].sum()), "alert-green", "siparis", "Sipariş listesini aç")
+    make_clickable_mini_card("Sipariş Önerisi", f"{len(order_df)} ürün", money_fmt(order_df["onerilen_siparis_maliyeti"].sum()), "alert-green", PAGE_ORDER, "Sipariş listesini aç", "card_siparis")
 
 
 # ============================================================
