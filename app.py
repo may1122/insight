@@ -1,9 +1,9 @@
 # ============================================================
-# AYÇA Insight V6.0 - Ürün Satış Raporu Olmadan Geliştirilmiş Sürüm
+# AYÇA Insight V6.1 - Tahsilat Açığı ve Stok Değeri Güçlendirilmiş Sürüm
 # Satış Excel + Envanter Excel ayrı ayrı yüklenir.
 # ------------------------------------------------------------
 # Bu sürüm ürün satış kalem raporu olmadan güvenilir analiz üretir:
-# - Ciro, brüt kâr, marj, ortalama sepet
+# - Ciro, brüt kâr, marj, toplam stok değeri, tahsilat açığı
 # - Önceki eş dönem kıyaslama
 # - Gün / saat / hafta günü satış ritmi
 # - Kurum, doktor, tahsilat, satış tipi analizi
@@ -34,7 +34,7 @@ import streamlit as st
 # STREAMLIT AYARI
 # ============================================================
 st.set_page_config(
-    page_title="AYÇA Insight V6.0",
+    page_title="AYÇA Insight V6.1",
     page_icon="💊",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -151,7 +151,7 @@ def show_demo_auth_screen():
         st.markdown(
             """
             <div class="ai-card">
-                <div class="ai-title">AYÇA Insight V6.0</div>
+                <div class="ai-title">AYÇA Insight V6.1</div>
                 <div class="ai-text">
                 Bu sürüm iki ayrı TEBEOS Excel çıktısını okur: <b>Satış</b> ve <b>Envanter</b>.
                 Ürün satış raporu olmadan ciro, kârlılık, tahsilat, doktor/kurum ve stok sermayesi analizini güçlendirir.
@@ -498,25 +498,67 @@ def compare_text(cur, prev, positive_label="arttı", negative_label="azaldı"):
     return f"{pct_fmt(abs(rate))} {positive_label if rate >= 0 else negative_label}"
 
 
-def ayca_score(sales_stats: dict, inventory_df: pd.DataFrame, critical_df: pd.DataFrame, no_stock_df: pd.DataFrame, high_stock_df: pd.DataFrame) -> int:
+def score_from_threshold(value: float, good: float, warning: float, bad: float, higher_is_better: bool = True) -> int:
+    """0-100 arası okunabilir skor üretir."""
+    try:
+        value = float(value)
+    except Exception:
+        return 0
+    if higher_is_better:
+        if value >= good:
+            return 100
+        if value >= warning:
+            return 75
+        if value >= bad:
+            return 45
+        return 15
+    if value <= good:
+        return 100
+    if value <= warning:
+        return 75
+    if value <= bad:
+        return 45
+    return 15
+
+
+def health_score_breakdown(sales_stats: dict, previous_stats: dict, inventory_df: pd.DataFrame, critical_df: pd.DataFrame, no_stock_df: pd.DataFrame, high_stock_df: pd.DataFrame) -> dict:
     inv_total = max(1, len(inventory_df))
-    stock_value = max(1, inventory_df["stok_degeri"].sum())
+    stock_value = float(inventory_df["stok_degeri"].sum())
+    high_stock_value = float(high_stock_df["stok_degeri"].sum())
+    ciro = float(sales_stats.get("ciro", 0))
+    margin = float(sales_stats.get("marj", 0))
+    collection_gap = float(sales_stats.get("tahsilat_acigi", 0))
+    collection_gap_ratio = safe_div(collection_gap, ciro)
     critical_ratio = len(critical_df) / inv_total
     no_stock_ratio = len(no_stock_df) / inv_total
-    high_stock_ratio = high_stock_df["stok_degeri"].sum() / stock_value
-    margin = sales_stats["marj"]
-    collection_gap_ratio = sales_stats["tahsilat_acigi"] / max(1, sales_stats["ciro"])
+    high_stock_value_ratio = safe_div(high_stock_value, stock_value)
+    stock_to_sales_ratio = safe_div(stock_value, ciro)
+    growth_rate = safe_div(sales_stats.get("ciro", 0) - previous_stats.get("ciro", 0), previous_stats.get("ciro", 0)) if previous_stats.get("ciro", 0) else 0
 
-    score = 100
-    score -= critical_ratio * 25
-    score -= no_stock_ratio * 18
-    score -= high_stock_ratio * 18
-    score -= collection_gap_ratio * 20
-    if margin < 0.10:
-        score -= 18
-    elif margin < 0.18:
-        score -= 8
-    return int(max(0, min(100, round(score))))
+    scores = {
+        "Kârlılık": score_from_threshold(margin, good=0.20, warning=0.15, bad=0.10, higher_is_better=True),
+        "Tahsilat": score_from_threshold(collection_gap_ratio, good=0.02, warning=0.05, bad=0.10, higher_is_better=False),
+        "Stok Yönetimi": int(max(0, min(100, 100 - critical_ratio * 55 - no_stock_ratio * 90))),
+        "Sermaye Verimliliği": int(max(0, min(100, 100 - high_stock_value_ratio * 85 - max(0, stock_to_sales_ratio - 2.0) * 12))),
+        "Büyüme": score_from_threshold(growth_rate, good=0.08, warning=0.00, bad=-0.08, higher_is_better=True),
+    }
+    weights = {"Kârlılık": 20, "Tahsilat": 25, "Stok Yönetimi": 20, "Sermaye Verimliliği": 20, "Büyüme": 15}
+    total = sum(scores[k] * weights[k] for k in scores) / sum(weights.values())
+    return {
+        "total": int(round(max(0, min(100, total)))),
+        "scores": scores,
+        "weights": weights,
+        "collection_gap_ratio": collection_gap_ratio,
+        "critical_ratio": critical_ratio,
+        "no_stock_ratio": no_stock_ratio,
+        "high_stock_value_ratio": high_stock_value_ratio,
+        "stock_to_sales_ratio": stock_to_sales_ratio,
+        "growth_rate": growth_rate,
+    }
+
+
+def ayca_score(sales_stats: dict, previous_stats: dict, inventory_df: pd.DataFrame, critical_df: pd.DataFrame, no_stock_df: pd.DataFrame, high_stock_df: pd.DataFrame) -> int:
+    return health_score_breakdown(sales_stats, previous_stats, inventory_df, critical_df, no_stock_df, high_stock_df)["total"]
 
 
 def score_status(score_value: int) -> str:
@@ -560,7 +602,7 @@ def create_ai_comment(current_stats, previous_stats, critical_df, no_stock_df, h
     messages = []
     messages.append(f"Ciro önceki eş döneme göre {compare_text(current_stats['ciro'], previous_stats['ciro'])}.")
     messages.append(f"Brüt kâr {compare_text(current_stats['kar'], previous_stats['kar'])}; güncel marj {pct_fmt(current_stats['marj'])}.")
-    messages.append(f"Reçete/işlem başı ortalama ciro {money_fmt(current_stats['ortalama_sepet'])}, işlem başı brüt kâr {money_fmt(current_stats['recete_basi_kar'])}.")
+    messages.append(f"Tahsilat oranı {pct_fmt(current_stats['tahsilat_orani'])}; tahsilat açığı {money_fmt(current_stats['tahsilat_acigi'])}.")
     if top_kurum:
         messages.append(f"En yüksek ciro oluşturan kurum: {top_kurum}.")
     if top_doctor:
@@ -655,7 +697,7 @@ if sales_file is None or inventory_file is None:
         f"""
         <div class="ayca-header">
             <div class="ayca-title">
-                <h1>AYÇA Insight V6.0</h1>
+                <h1>AYÇA Insight V6.1</h1>
                 <p>{eczane_adi} · Satış ve envanter dosyalarını ayrı ayrı yükle.</p>
             </div>
             <div class="header-pill">Dosya bekleniyor</div>
@@ -715,7 +757,8 @@ critical_df = inventory_df[inventory_df["kritik_mi"] & (inventory_df["stok"] > 0
 no_stock_df = inventory_df[inventory_df["stok"] <= 0].copy()
 high_stock_df = inventory_df[inventory_df["fazla_stok_mu"]].copy()
 pareto_df = make_pareto_inventory(inventory_df)
-score = ayca_score(current_stats, inventory_df, critical_df, no_stock_df, high_stock_df)
+health = health_score_breakdown(current_stats, previous_stats, inventory_df, critical_df, no_stock_df, high_stock_df)
+score = health["total"]
 
 # Ana özet tablolar
 kurum_df = period_df.groupby("kurum", as_index=False).agg(
@@ -780,7 +823,7 @@ st.markdown(
     f"""
     <div class="ayca-header">
         <div class="ayca-title">
-            <h1>AYÇA Insight V6.0</h1>
+            <h1>AYÇA Insight V6.1</h1>
             <p>{eczane_adi} · {selected_period} · Satış: {sales_sheet} · Envanter: {inv_sheet} · {today_str}</p>
         </div>
         <div class="header-pill">AYÇA Sağlık Puanı: {score}/100 · {score_status(score)}</div>
@@ -792,15 +835,15 @@ st.markdown(
 ciro_trend, ciro_class = rate_fmt(current_stats["ciro"], previous_stats["ciro"])
 profit_trend, profit_class = rate_fmt(current_stats["kar"], previous_stats["kar"])
 margin_trend, margin_class = rate_fmt(current_stats["marj"], previous_stats["marj"])
-basket_trend, basket_class = rate_fmt(current_stats["ortalama_sepet"], previous_stats["ortalama_sepet"])
+collection_trend, collection_class = rate_fmt(current_stats["tahsilat_acigi"], previous_stats["tahsilat_acigi"])
+stock_value_total = inventory_df["stok_degeri"].sum()
 
-k1, k2, k3, k4, k5, k6 = st.columns(6)
+k1, k2, k3, k4, k5 = st.columns(5)
 with k1: make_metric_card("Güncel Ciro", money_fmt(current_stats["ciro"]), selected_period, ciro_trend, ciro_class)
 with k2: make_metric_card("Brüt Kâr", money_fmt(current_stats["kar"]), "Satış Exceli", profit_trend, profit_class)
 with k3: make_metric_card("Kâr Marjı", pct_fmt(current_stats["marj"]), "Brüt kâr / ciro", margin_trend, margin_class)
-with k4: make_metric_card("İşlem Sayısı", f"{current_stats['islem']}", "Tekil satış no")
-with k5: make_metric_card("Ortalama Sepet", money_fmt(current_stats["ortalama_sepet"]), "Ciro / işlem", basket_trend, basket_class)
-with k6: make_metric_card("İşlem Başı Kâr", money_fmt(current_stats["recete_basi_kar"]), "Brüt kâr / işlem")
+with k4: make_metric_card("Toplam Stok Değeri", money_fmt(stock_value_total), "İçerideki satılabilir mal değeri")
+with k5: make_metric_card("Tahsilat Açığı", money_fmt(current_stats["tahsilat_acigi"]), f"Cironun {pct_fmt(health['collection_gap_ratio'])}", collection_trend, "metric-down" if current_stats["tahsilat_acigi"] > previous_stats["tahsilat_acigi"] else "metric-up")
 
 
 # ============================================================
@@ -809,16 +852,17 @@ with k6: make_metric_card("İşlem Başı Kâr", money_fmt(current_stats["recete
 stock_value = inventory_df["stok_degeri"].sum()
 high_stock_value = high_stock_df["stok_degeri"].sum()
 pareto_a_count = int((pareto_df["pareto_sinif"] == "A - Sermaye Yoğun").sum()) if not pareto_df.empty else 0
-health_items = {
-    "Kârlılık": max(0, min(100, int(55 + current_stats["marj"] * 180))),
-    "Tahsilat": max(0, min(100, int(current_stats["tahsilat_orani"] * 100))),
-    "Stok Yönetimi": max(0, min(100, int(100 - (len(critical_df) / max(1, len(inventory_df)) * 70) - (len(no_stock_df) / max(1, len(inventory_df)) * 40)))),
-    "Nakit Verimliliği": max(0, min(100, int(100 - (high_stock_value / max(1, stock_value) * 80)))),
-}
+health_items = health["scores"]
+health_weights = health["weights"]
 health_html = "".join([
-    f'<div class="health-row"><div class="health-head"><span>{k}</span><span>{v}/100</span></div><div class="health-bar-bg"><div class="health-bar-fill" style="width:{v}%;"></div></div></div>'
+    f'<div class="health-row"><div class="health-head"><span>{k} <small>({health_weights[k]}%)</small></span><span>{v}/100</span></div><div class="health-bar-bg"><div class="health-bar-fill" style="width:{v}%;"></div></div></div>'
     for k, v in health_items.items()
 ])
+health_explain_html = f"""
+<div class="exec-list-item">🧾 Tahsilat açığı oranı: <b>{pct_fmt(health['collection_gap_ratio'])}</b> · Tahsilat skoru bu orana göre hesaplanır.</div>
+<div class="exec-list-item">📦 Toplam stok değeri: <b>{money_fmt(stock_value)}</b> · Stok/ciro oranı: <b>{num_fmt(health['stock_to_sales_ratio'], 2)}x</b></div>
+<div class="exec-list-item">💸 Yüksek stokta bağlı sermaye: <b>{money_fmt(high_stock_value)}</b> · Toplam stokun <b>{pct_fmt(health['high_stock_value_ratio'])}</b></div>
+"""
 
 action_html = "".join([f"<div class='exec-list-item'>{item}</div>" for item in actions])
 
@@ -836,6 +880,7 @@ st.markdown(
             <div class="score-big">{score}</div>
             <div class="exec-sub">Durum: <b>{score_status(score)}</b></div>
             {health_html}
+            {health_explain_html}
         </div>
     </div>
     """,
@@ -843,11 +888,11 @@ st.markdown(
 )
 
 r1, r2, r3, r4, r5 = st.columns(5)
-with r1: make_mini_card("Tahsilat Açığı", money_fmt(current_stats["tahsilat_acigi"]), "Toplam tutar - ödenen tutar", "alert-red" if current_stats["tahsilat_acigi"] > 0 else "alert-green")
-with r2: make_mini_card("Sonlanmamış Satış", str(current_stats["sonlanmamis"]), "Gün sonu kontrolü", "alert-orange" if current_stats["sonlanmamis"] else "alert-green")
+with r1: make_mini_card("Toplam Stok Değeri", money_fmt(stock_value), "İçerideki satılabilir mal", "alert-blue")
+with r2: make_mini_card("Tahsilat Açığı", money_fmt(current_stats["tahsilat_acigi"]), f"Cironun {pct_fmt(health['collection_gap_ratio'])}", "alert-red" if current_stats["tahsilat_acigi"] > 0 else "alert-green")
 with r3: make_mini_card("Kritik / Yok", f"{len(critical_df)} / {len(no_stock_df)}", "Kritik stok ve stok yok", "alert-red" if len(critical_df) + len(no_stock_df) else "alert-green")
 with r4: make_mini_card("Yüksek Stok", str(len(high_stock_df)), f"{money_fmt(high_stock_value)} bağlı para", "alert-orange" if len(high_stock_df) else "alert-green")
-with r5: make_mini_card("Pareto Ürünleri", str(pareto_a_count), "Stok sermayesinin yaklaşık %80'i", "alert-purple")
+with r5: make_mini_card("Stok / Ciro", f"{num_fmt(health['stock_to_sales_ratio'], 2)}x", "Stok değeri / seçili dönem ciro", "alert-purple")
 
 
 # ============================================================
@@ -993,7 +1038,7 @@ elif page == "📥 Rapor":
     st.markdown('<div class="section-title">Excel Raporu</div>', unsafe_allow_html=True)
     report = create_excel_report(sales_df, inventory_df, period_df, critical_df, no_stock_df, high_stock_df, pareto_df, kurum_df, doktor_df, weekday_df, hourly_df)
     st.download_button(
-        "📥 AYÇA Insight V6.0 Raporunu İndir",
+        "📥 AYÇA Insight V6.1 Raporunu İndir",
         data=report,
         file_name=f"ayca_insight_v6_rapor_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
