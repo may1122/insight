@@ -1,19 +1,19 @@
 # ============================================================
-# AYÇA Insight V5.1 - İki Excel Uyumlu Demo
+# AYÇA Insight V6.0 - Ürün Satış Raporu Olmadan Geliştirilmiş Sürüm
 # Satış Excel + Envanter Excel ayrı ayrı yüklenir.
 # ------------------------------------------------------------
-# Beklenen dosyalar:
-# 1) Satış Exceli: sats_all.xlsx benzeri TEBEOS satış özeti
-#    Örnek kolonlar: Satış No, Satış Tipi, Tahsilat, Toplam Tutar,
-#    Ödenen Tutar, Kar Tutarı, Maliyet Tutarı, İşlem Tarihi, Sonlandı
+# Bu sürüm ürün satış kalem raporu olmadan güvenilir analiz üretir:
+# - Ciro, brüt kâr, marj, ortalama sepet
+# - Önceki eş dönem kıyaslama
+# - Gün / saat / hafta günü satış ritmi
+# - Kurum, doktor, tahsilat, satış tipi analizi
+# - Tahsilat açığı ve sonlanmamış satış uyarıları
+# - Stok sermayesi, kritik stok, stok yok, yüksek stok
+# - Pareto stok sermayesi analizi
+# - Günlük aksiyon listesi ve yönetici özeti
 #
-# 2) Envanter Exceli: Envanter_...xlsx benzeri stok listesi
-#    Örnek kolonlar: Barkod, Ürün Adı, Psf, Kamu, Stok, Kritik Stok,
-#    Raf, Mal Top(Kdv Hariç), Mal Top(Kdv Dahil)
-#
-# Çalıştırma:
-# pip install streamlit pandas numpy openpyxl plotly
-# streamlit run app.py
+# Not: Ürün bazlı satış hızı, sipariş tavsiyesi, ölü stok ve miad motoru
+# ürün satış raporu gelene kadar bilinçli olarak kapalıdır.
 # ============================================================
 
 from __future__ import annotations
@@ -34,7 +34,7 @@ import streamlit as st
 # STREAMLIT AYARI
 # ============================================================
 st.set_page_config(
-    page_title="AYÇA Insight V5.1",
+    page_title="AYÇA Insight V6.0",
     page_icon="💊",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -67,21 +67,21 @@ st.markdown(
     html, body, [data-testid="stAppViewContainer"] {background: var(--bg); color: var(--text);} 
     [data-testid="stHeader"] {background: rgba(248,250,252,.88); backdrop-filter: blur(10px);} 
     [data-testid="stSidebar"] {background: linear-gradient(180deg,#FFFFFF 0%,#F1F5F9 100%); border-right: 1px solid var(--border);} 
-    .block-container {padding-top: 1.4rem; max-width: 1520px;}
+    .block-container {padding-top: 1.2rem; max-width: 1540px;}
     .ayca-header {display:flex; justify-content:space-between; align-items:center; gap:16px; margin-bottom:16px;}
     .ayca-title h1 {margin:0; color:var(--text); font-size:32px; letter-spacing:-.7px; font-weight:950;}
     .ayca-title p {margin:6px 0 0 0; color:var(--muted); font-size:14px;}
     .header-pill {background:#fff; border:1px solid var(--border); border-radius:16px; padding:12px 16px; box-shadow:0 8px 24px rgba(15,23,42,.05); color:var(--text); font-weight:900; font-size:13px; white-space:nowrap;}
-    .metric-card {min-height:138px; background:linear-gradient(180deg,#fff 0%,#F8FBFF 100%); border:1px solid var(--border); border-radius:20px; padding:18px; box-shadow:0 12px 30px rgba(15,23,42,.06); overflow:hidden; position:relative;}
+    .metric-card {min-height:132px; background:linear-gradient(180deg,#fff 0%,#F8FBFF 100%); border:1px solid var(--border); border-radius:20px; padding:18px; box-shadow:0 12px 30px rgba(15,23,42,.06); overflow:hidden; position:relative;}
     .metric-label {color:var(--muted); font-size:12px; font-weight:900; letter-spacing:.4px; text-transform:uppercase; margin-bottom:10px;}
-    .metric-value {color:var(--text); font-size:29px; font-weight:950; margin-bottom:8px; letter-spacing:-.5px;}
+    .metric-value {color:var(--text); font-size:28px; font-weight:950; margin-bottom:8px; letter-spacing:-.5px;}
     .metric-sub {color:var(--muted); font-size:13px;}
     .metric-up {color:var(--green); font-size:13px; font-weight:900;}
     .metric-down {color:var(--red); font-size:13px; font-weight:900;}
     .mini-card {background:var(--panel); border:1px solid var(--border); border-radius:18px; padding:16px; box-shadow:0 10px 26px rgba(15,23,42,.05); min-height:104px;}
     .mini-title {color:var(--text); font-size:14px; font-weight:900; margin-bottom:8px;}
     .mini-value {color:var(--text); font-size:24px; font-weight:950; margin-bottom:4px;}
-    .mini-note {color:var(--muted); font-size:13px;}
+    .mini-note {color:var(--muted); font-size:13px; line-height:1.45;}
     .alert-red {background:linear-gradient(135deg,#fff 0%,var(--red-soft) 100%); border-color:#FECACA;}
     .alert-orange {background:linear-gradient(135deg,#fff 0%,var(--orange-soft) 100%); border-color:#FDE68A;}
     .alert-green {background:linear-gradient(135deg,#fff 0%,var(--green-soft) 100%); border-color:#BBF7D0;}
@@ -91,7 +91,6 @@ st.markdown(
     .ai-title {color:var(--blue); font-size:18px; font-weight:950; margin-bottom:8px;}
     .ai-text {color:var(--text); font-size:14px; line-height:1.55;}
     .section-title {color:var(--text); font-size:21px; font-weight:950; margin:20px 0 12px 0; letter-spacing:-.3px;}
-    .soft-panel {background:var(--panel); border:1px solid var(--border); border-radius:20px; padding:16px; box-shadow:0 12px 30px rgba(15,23,42,.05);}
     .exec-grid {display:grid; grid-template-columns:1.25fr .75fr; gap:16px; margin:14px 0 18px 0;}
     .exec-card {background:linear-gradient(135deg,#FFFFFF 0%,#EFF6FF 100%); border:1px solid #BFDBFE; border-radius:24px; padding:20px; box-shadow:0 14px 34px rgba(37,99,235,.08);}
     .exec-title {color:#0F172A; font-size:22px; font-weight:950; letter-spacing:-.4px; margin-bottom:8px;}
@@ -152,10 +151,10 @@ def show_demo_auth_screen():
         st.markdown(
             """
             <div class="ai-card">
-                <div class="ai-title">AYÇA Insight V5.1</div>
+                <div class="ai-title">AYÇA Insight V6.0</div>
                 <div class="ai-text">
                 Bu sürüm iki ayrı TEBEOS Excel çıktısını okur: <b>Satış</b> ve <b>Envanter</b>.
-                Satış dosyasından ciro/kâr/tahsilat; envanter dosyasından stok, kritik stok ve stok değeri analiz edilir.
+                Ürün satış raporu olmadan ciro, kârlılık, tahsilat, doktor/kurum ve stok sermayesi analizini güçlendirir.
                 </div>
             </div>
             """,
@@ -352,6 +351,10 @@ def apply_plot_theme(fig, height=360):
     return fig
 
 
+def safe_div(a, b):
+    return float(a) / float(b) if float(b or 0) != 0 else 0.0
+
+
 # ============================================================
 # SATIŞ VE ENVANTER STANDARDİZASYONU
 # ============================================================
@@ -362,6 +365,9 @@ def standardize_sales(raw_df: pd.DataFrame) -> pd.DataFrame:
         "satis_tipi": find_col(cols, ["Satış Tipi", "Satis Tipi"]),
         "tahsilat": find_col(cols, ["Tahsilat", "Ödeme Tipi", "Odeme Tipi"]),
         "hasta": find_col(cols, ["Hasta Adı Soyadı", "Hasta Adi Soyadi"]),
+        "recete_no": find_col(cols, ["Reç. No", "Rec. No", "Reçete No", "Recete No"]),
+        "erecete_no": find_col(cols, ["EReç. No", "ERec. No", "E Reçete No"]),
+        "doktor": find_col(cols, ["Doktor Adı", "Doktor Adi", "Doktor"]),
         "recete_tarihi": find_col(cols, ["Reç. Tar", "Rec. Tar", "Reçete Tarihi"]),
         "kurum": find_col(cols, ["Kurum Adı", "Kurum Adi"]),
         "grup": find_col(cols, ["Grubu", "Grup"]),
@@ -387,6 +393,9 @@ def standardize_sales(raw_df: pd.DataFrame) -> pd.DataFrame:
     df["satis_tipi"] = raw_df[mapping["satis_tipi"]].astype(str) if mapping["satis_tipi"] else "Bilinmiyor"
     df["tahsilat"] = raw_df[mapping["tahsilat"]].astype(str) if mapping["tahsilat"] else "Bilinmiyor"
     df["hasta"] = raw_df[mapping["hasta"]].astype(str) if mapping["hasta"] else ""
+    df["recete_no"] = raw_df[mapping["recete_no"]].astype(str) if mapping["recete_no"] else ""
+    df["erecete_no"] = raw_df[mapping["erecete_no"]].astype(str) if mapping["erecete_no"] else ""
+    df["doktor"] = raw_df[mapping["doktor"]].astype(str) if mapping["doktor"] else "Bilinmiyor"
     df["kurum"] = raw_df[mapping["kurum"]].astype(str) if mapping["kurum"] else "Bilinmiyor"
     df["grup"] = raw_df[mapping["grup"]].astype(str) if mapping["grup"] else "Bilinmiyor"
     df["ciro"] = pd.to_numeric(raw_df[mapping["toplam"]], errors="coerce").fillna(0)
@@ -396,7 +405,10 @@ def standardize_sales(raw_df: pd.DataFrame) -> pd.DataFrame:
     df["brut_kar"] = pd.to_numeric(raw_df[mapping["kar"]], errors="coerce").fillna(0)
     df["maliyet"] = pd.to_numeric(raw_df[mapping["maliyet"]], errors="coerce").fillna(0)
     df["fiyat_farki"] = pd.to_numeric(raw_df[mapping["fiyat_farki"]], errors="coerce").fillna(0) if mapping["fiyat_farki"] else 0
-    df["sonlandi"] = raw_df[mapping["sonlandi"]].astype(bool) if mapping["sonlandi"] else True
+    if mapping["sonlandi"]:
+        df["sonlandi"] = raw_df[mapping["sonlandi"]].astype(str).str.lower().isin(["true", "1", "evet", "yes"])
+    else:
+        df["sonlandi"] = True
     df["tarih"] = excel_serial_to_datetime(raw_df[mapping["islem_tarihi"]])
     df["recete_tarihi"] = excel_serial_to_datetime(raw_df[mapping["recete_tarihi"]]) if mapping["recete_tarihi"] else pd.NaT
     df["alım_tarihi"] = excel_serial_to_datetime(raw_df[mapping["alım_tarihi"]]) if mapping["alım_tarihi"] else pd.NaT
@@ -404,7 +416,13 @@ def standardize_sales(raw_df: pd.DataFrame) -> pd.DataFrame:
     df = df.dropna(subset=["tarih"])
     df["gun"] = df["tarih"].dt.date
     df["ay"] = df["tarih"].dt.to_period("M").astype(str)
+    df["saat"] = df["tarih"].dt.hour
+    day_map = {0: "Pazartesi", 1: "Salı", 2: "Çarşamba", 3: "Perşembe", 4: "Cuma", 5: "Cumartesi", 6: "Pazar"}
+    df["hafta_gunu"] = df["tarih"].dt.dayofweek.map(day_map)
+    df["hafta_gunu_no"] = df["tarih"].dt.dayofweek
     df["kar_marji"] = np.where(df["ciro"] > 0, df["brut_kar"] / df["ciro"], 0)
+    df["tahsilat_acigi"] = (df["ciro"] - df["odenen"]).clip(lower=0)
+    df["recete_gecikme_gun"] = (df["tarih"].dt.normalize() - df["recete_tarihi"].dt.normalize()).dt.days
     return df
 
 
@@ -446,72 +464,160 @@ def standardize_inventory(raw_df: pd.DataFrame) -> pd.DataFrame:
     df["mal_dahil"] = pd.to_numeric(raw_df[mapping["mal_dahil"]], errors="coerce").fillna(0) if mapping["mal_dahil"] else df["mal_haric"]
     df["stok_degeri"] = np.where(df["mal_dahil"] > 0, df["mal_dahil"], df["psf_toplam"])
     df["kritik_mi"] = np.where(df["kritik_stok"] > 0, df["stok"] <= df["kritik_stok"], df["stok"] <= 1)
-    df["fazla_stok_mu"] = df["stok"] >= 100
-    df["stok_durumu"] = np.select(
-        [df["stok"] <= 0, df["kritik_mi"], df["fazla_stok_mu"]],
-        ["Stok Yok", "Kritik", "Yüksek Stok"],
-        default="Normal",
-    )
     return df
 
 
 # ============================================================
-# SKOR VE YORUM
+# ANALİZ FONKSİYONLARI
 # ============================================================
-def ayca_score(sales_df: pd.DataFrame, inventory_df: pd.DataFrame, current_margin: float) -> int:
+def summarize_sales(df: pd.DataFrame) -> dict:
+    ciro = df["ciro"].sum()
+    kar = df["brut_kar"].sum()
+    maliyet = df["maliyet"].sum()
+    islem = df["satis_no"].nunique()
+    return {
+        "ciro": ciro,
+        "kar": kar,
+        "maliyet": maliyet,
+        "marj": safe_div(kar, ciro),
+        "islem": islem,
+        "ortalama_sepet": safe_div(ciro, islem),
+        "recete_basi_kar": safe_div(kar, islem),
+        "tahsilat_acigi": df["tahsilat_acigi"].sum(),
+        "tahsilat_orani": safe_div(df["odenen"].sum(), ciro),
+        "sonlanmamis": int((~df["sonlandi"]).sum()),
+    }
+
+
+def compare_text(cur, prev, positive_label="arttı", negative_label="azaldı"):
+    if prev == 0 and cur > 0:
+        return "yeni veri oluştu"
+    if prev == 0:
+        return "değişim hesaplanamadı"
+    rate = (cur - prev) / prev
+    return f"{pct_fmt(abs(rate))} {positive_label if rate >= 0 else negative_label}"
+
+
+def ayca_score(sales_stats: dict, inventory_df: pd.DataFrame, critical_df: pd.DataFrame, no_stock_df: pd.DataFrame, high_stock_df: pd.DataFrame) -> int:
     inv_total = max(1, len(inventory_df))
-    critical_ratio = len(inventory_df[inventory_df["kritik_mi"]]) / inv_total
-    no_stock_ratio = len(inventory_df[inventory_df["stok"] <= 0]) / inv_total
-    high_stock_value = inventory_df.loc[inventory_df["fazla_stok_mu"], "stok_degeri"].sum()
-    total_stock_value = max(1, inventory_df["stok_degeri"].sum())
-    high_stock_ratio = high_stock_value / total_stock_value
+    stock_value = max(1, inventory_df["stok_degeri"].sum())
+    critical_ratio = len(critical_df) / inv_total
+    no_stock_ratio = len(no_stock_df) / inv_total
+    high_stock_ratio = high_stock_df["stok_degeri"].sum() / stock_value
+    margin = sales_stats["marj"]
+    collection_gap_ratio = sales_stats["tahsilat_acigi"] / max(1, sales_stats["ciro"])
 
     score = 100
-    score -= critical_ratio * 30
-    score -= no_stock_ratio * 20
+    score -= critical_ratio * 25
+    score -= no_stock_ratio * 18
     score -= high_stock_ratio * 18
-    if current_margin < 0.10:
+    score -= collection_gap_ratio * 20
+    if margin < 0.10:
         score -= 18
-    elif current_margin < 0.18:
+    elif margin < 0.18:
         score -= 8
     return int(max(0, min(100, round(score))))
 
 
 def score_status(score_value: int) -> str:
-    if score_value >= 80:
+    if score_value >= 82:
         return "Güçlü"
-    if score_value >= 60:
+    if score_value >= 65:
+        return "Kontrollü"
+    if score_value >= 50:
         return "Takip edilmeli"
     return "Riskli"
 
 
-def create_ai_comment(sales_df, inv_df, critical_df, no_stock_df, high_stock_df, current_ciro, previous_ciro, current_margin):
+def make_pareto_inventory(inventory_df: pd.DataFrame) -> pd.DataFrame:
+    pareto = inventory_df.sort_values("stok_degeri", ascending=False).copy()
+    total = max(1, pareto["stok_degeri"].sum())
+    pareto["kumulatif_deger"] = pareto["stok_degeri"].cumsum()
+    pareto["kumulatif_oran"] = pareto["kumulatif_deger"] / total
+    pareto["pareto_sinif"] = np.where(pareto["kumulatif_oran"] <= 0.80, "A - Sermaye Yoğun", "B/C - Diğer")
+    return pareto
+
+
+def detect_daily_anomalies(daily_df: pd.DataFrame) -> pd.DataFrame:
+    if len(daily_df) < 5:
+        daily_df["anomali"] = "Normal"
+        return daily_df
+    mean = daily_df["ciro"].mean()
+    std = daily_df["ciro"].std(ddof=0)
+    if std == 0 or pd.isna(std):
+        daily_df["anomali"] = "Normal"
+        return daily_df
+    daily_df["z_skor"] = (daily_df["ciro"] - mean) / std
+    daily_df["anomali"] = np.select(
+        [daily_df["z_skor"] >= 1.5, daily_df["z_skor"] <= -1.5],
+        ["Yüksek gün", "Düşük gün"],
+        default="Normal",
+    )
+    return daily_df
+
+
+def create_ai_comment(current_stats, previous_stats, critical_df, no_stock_df, high_stock_df, best_day, worst_day, top_kurum, top_doctor):
     messages = []
-    if previous_ciro > 0:
-        rate = (current_ciro - previous_ciro) / previous_ciro
-        messages.append(f"Seçilen dönemde ciro önceki eş döneme göre {pct_fmt(abs(rate))} {'artmış' if rate >= 0 else 'azalmış'} görünüyor.")
+    messages.append(f"Ciro önceki eş döneme göre {compare_text(current_stats['ciro'], previous_stats['ciro'])}.")
+    messages.append(f"Brüt kâr {compare_text(current_stats['kar'], previous_stats['kar'])}; güncel marj {pct_fmt(current_stats['marj'])}.")
+    messages.append(f"Reçete/işlem başı ortalama ciro {money_fmt(current_stats['ortalama_sepet'])}, işlem başı brüt kâr {money_fmt(current_stats['recete_basi_kar'])}.")
+    if top_kurum:
+        messages.append(f"En yüksek ciro oluşturan kurum: {top_kurum}.")
+    if top_doctor:
+        messages.append(f"En çok ciro getiren doktor kaydı: {top_doctor}.")
+    if best_day and worst_day:
+        messages.append(f"Haftanın en güçlü günü {best_day}; en zayıf günü {worst_day} görünüyor.")
     if not critical_df.empty:
-        row = critical_df.sort_values("stok").iloc[0]
-        messages.append(f"{row['urun']} ürünü kritik stokta; mevcut stok {num_fmt(row['stok'],0)}.")
+        messages.append(f"Kritik stokta {len(critical_df)} ürün var.")
     if not no_stock_df.empty:
-        messages.append(f"Stok sıfır görünen {len(no_stock_df)} ürün var; satış kaçırma riski oluşturabilir.")
+        messages.append(f"Stokta olmayan {len(no_stock_df)} ürün satış kaçırma riski oluşturabilir.")
     if not high_stock_df.empty:
-        messages.append(f"Yüksek stok grubunda yaklaşık {money_fmt(high_stock_df['stok_degeri'].sum())} bağlı para var.")
-    if current_margin > 0:
-        messages.append(f"Güncel brüt kâr marjı {pct_fmt(current_margin)} seviyesinde.")
-    if not messages:
-        messages.append("Genel tablo dengeli görünüyor; kritik stok ve nakit bağlayan stoklar düzenli takip edilmeli.")
+        messages.append(f"Yüksek stok grubunda {money_fmt(high_stock_df['stok_degeri'].sum())} sermaye bağlı.")
     return " ".join(messages)
 
 
-def create_excel_report(sales_df, inv_df, critical_df, no_stock_df, high_stock_df):
+def create_action_items(current_stats, previous_stats, critical_df, no_stock_df, high_stock_df, pareto_df, daily_anomaly_df):
+    actions = []
+    if current_stats["marj"] < 0.12:
+        actions.append("💰 Brüt kâr marjı düşük. İskonto, maliyet ve fiyat farkı kayıtlarını kontrol et.")
+    if current_stats["tahsilat_acigi"] > 0:
+        actions.append(f"🧾 Tahsilat açığı {money_fmt(current_stats['tahsilat_acigi'])}. Ödenen tutar ve toplam tutar farklarını incele.")
+    if current_stats["sonlanmamis"] > 0:
+        actions.append(f"⏳ Sonlanmamış {current_stats['sonlanmamis']} satış kaydı var. Gün sonu kontrolü yap.")
+    if not no_stock_df.empty:
+        actions.append(f"⛔ Stokta olmayan {len(no_stock_df)} ürün var. En sık sorulan ürünleri manuel önceliklendir.")
+    if not critical_df.empty:
+        row = critical_df.sort_values(["stok", "stok_degeri"], ascending=[True, False]).iloc[0]
+        actions.append(f"🔴 Kritik stok listesinin başında {row['urun']} var. Mevcut stok: {num_fmt(row['stok'], 0)}.")
+    if not high_stock_df.empty:
+        row = high_stock_df.sort_values("stok_degeri", ascending=False).iloc[0]
+        actions.append(f"📦 En çok sermaye bağlayan yüksek stok ürünü: {row['urun']} ({money_fmt(row['stok_degeri'])}).")
+    pareto_a_count = int((pareto_df["pareto_sinif"] == "A - Sermaye Yoğun").sum()) if not pareto_df.empty else 0
+    if pareto_a_count:
+        actions.append(f"🎯 Stok sermayesinin yaklaşık %80'i {pareto_a_count} üründe toplanıyor. Bu ürünleri ayrı takip et.")
+    low_days = daily_anomaly_df[daily_anomaly_df.get("anomali", "") == "Düşük gün"]
+    if not low_days.empty:
+        d = low_days.sort_values("ciro").iloc[0]
+        actions.append(f"📉 {d['gun']} düşük ciro günü olarak ayrışıyor. Nöbet, hava, kampanya veya işlem kapanış etkisi olabilir.")
+    if not actions:
+        actions.append("✅ Kritik aksiyon görünmüyor. Günlük ciro, tahsilat ve stok sermayesini takip et.")
+    return actions[:7]
+
+
+def create_excel_report(sales_df, inv_df, period_df, critical_df, no_stock_df, high_stock_df, pareto_df, kurum_df, doktor_df, weekday_df, hourly_df):
     output = BytesIO()
     with pd.ExcelWriter(output, engine="openpyxl") as writer:
+        period_df.to_excel(writer, sheet_name="Secili_Donem_Satis", index=False)
         sales_df.to_excel(writer, sheet_name="Satis_Standart", index=False)
         inv_df.to_excel(writer, sheet_name="Envanter_Standart", index=False)
         critical_df.to_excel(writer, sheet_name="Kritik_Stok", index=False)
         no_stock_df.to_excel(writer, sheet_name="Stok_Yok", index=False)
         high_stock_df.to_excel(writer, sheet_name="Yuksek_Stok", index=False)
+        pareto_df.to_excel(writer, sheet_name="Pareto_Stok", index=False)
+        kurum_df.to_excel(writer, sheet_name="Kurum_Analizi", index=False)
+        doktor_df.to_excel(writer, sheet_name="Doktor_Analizi", index=False)
+        weekday_df.to_excel(writer, sheet_name="Hafta_Gunu", index=False)
+        hourly_df.to_excel(writer, sheet_name="Saatlik", index=False)
     return output.getvalue()
 
 
@@ -526,7 +632,7 @@ if st.sidebar.button("Çıkış Yap", use_container_width=True):
     safe_rerun()
 
 st.sidebar.title("💊 AYÇA Insight")
-st.sidebar.caption("V5.1 · Satış + Envanter")
+st.sidebar.caption("V6.0 · Ciro + Stok Sermayesi")
 eczane_adi = st.sidebar.text_input("Eczane Adı", value="İdil Eczanesi")
 kullanici_adi = st.sidebar.text_input("Kullanıcı", value="Abdullah Bey")
 
@@ -536,8 +642,9 @@ inventory_file = st.sidebar.file_uploader("2) Envanter Excel dosyasını yükle"
 st.sidebar.markdown("---")
 selected_period = st.sidebar.selectbox("Satış Dönemi", ["Son 7 gün", "Son 14 gün", "Son 30 gün", "Tüm veri"], index=2)
 high_stock_limit = st.sidebar.slider("Yüksek stok adedi eşiği", 20, 500, 100)
+min_stock_value_filter = st.sidebar.number_input("Yüksek stok için minimum stok değeri", min_value=0, value=0, step=1000)
 show_patient_columns = st.sidebar.checkbox("Hasta isim kolonunu göster", value=False)
-st.sidebar.caption("Not: Hasta TC ve kişisel sağlık verisi analiz dışı tutulmalıdır. Hasta adı varsayılan olarak gösterilmez.")
+st.sidebar.caption("Hasta TC ve kişisel sağlık verisi analiz dışı tutulmalıdır. Hasta adı varsayılan olarak gizlidir.")
 
 
 # ============================================================
@@ -548,7 +655,7 @@ if sales_file is None or inventory_file is None:
         f"""
         <div class="ayca-header">
             <div class="ayca-title">
-                <h1>AYÇA Insight V5.1</h1>
+                <h1>AYÇA Insight V6.0</h1>
                 <p>{eczane_adi} · Satış ve envanter dosyalarını ayrı ayrı yükle.</p>
             </div>
             <div class="header-pill">Dosya bekleniyor</div>
@@ -556,11 +663,13 @@ if sales_file is None or inventory_file is None:
         """,
         unsafe_allow_html=True,
     )
-    c1, c2 = st.columns(2)
+    c1, c2, c3 = st.columns(3)
     with c1:
-        make_mini_card("1. Satış Exceli", "Zorunlu", "sats_all.xlsx formatı: ciro, kâr, tahsilat, işlem tarihi", "alert-blue")
+        make_mini_card("1. Satış Exceli", "Zorunlu", "Ciro, kâr, tahsilat, kurum, doktor, işlem tarihi", "alert-blue")
     with c2:
-        make_mini_card("2. Envanter Exceli", "Zorunlu", "stok, kritik stok, raf, stok değeri", "alert-green")
+        make_mini_card("2. Envanter Exceli", "Zorunlu", "Stok, kritik stok, raf, stok değeri", "alert-green")
+    with c3:
+        make_mini_card("Ürün Satış Raporu", "Şimdilik yok", "Bu sürüm ürün kalemi olmadan güvenilir analiz üretir", "alert-orange")
     st.info("Sol menüden iki dosyayı da yüklediğinde dashboard otomatik çalışır.")
     st.stop()
 
@@ -573,7 +682,7 @@ except Exception as exc:
     st.error(f"Dosya okunurken hata oluştu: {exc}")
     st.stop()
 
-inventory_df["fazla_stok_mu"] = inventory_df["stok"] >= high_stock_limit
+inventory_df["fazla_stok_mu"] = (inventory_df["stok"] >= high_stock_limit) & (inventory_df["stok_degeri"] >= min_stock_value_filter)
 inventory_df["stok_durumu"] = np.select(
     [inventory_df["stok"] <= 0, inventory_df["kritik_mi"], inventory_df["fazla_stok_mu"]],
     ["Stok Yok", "Kritik", "Yüksek Stok"],
@@ -582,7 +691,7 @@ inventory_df["stok_durumu"] = np.select(
 
 
 # ============================================================
-# SATIŞ DÖNEMİ
+# DÖNEM HESABI
 # ============================================================
 max_date = sales_df["tarih"].max()
 if selected_period == "Son 7 gün":
@@ -599,21 +708,68 @@ period_days = max(1, (max_date - start_date).days)
 prev_start = start_date - pd.Timedelta(days=period_days)
 prev_df = sales_df[(sales_df["tarih"] >= prev_start) & (sales_df["tarih"] < start_date)].copy()
 
-current_ciro = period_df["ciro"].sum()
-previous_ciro = prev_df["ciro"].sum()
-current_profit = period_df["brut_kar"].sum()
-previous_profit = prev_df["brut_kar"].sum()
-current_margin = current_profit / current_ciro if current_ciro > 0 else 0
-previous_margin = previous_profit / previous_ciro if previous_ciro > 0 else 0
-current_transactions = period_df["satis_no"].nunique()
-previous_transactions = prev_df["satis_no"].nunique()
-avg_basket = current_ciro / current_transactions if current_transactions else 0
-prev_avg_basket = previous_ciro / previous_transactions if previous_transactions else 0
+current_stats = summarize_sales(period_df)
+previous_stats = summarize_sales(prev_df)
 
 critical_df = inventory_df[inventory_df["kritik_mi"] & (inventory_df["stok"] > 0)].copy()
 no_stock_df = inventory_df[inventory_df["stok"] <= 0].copy()
 high_stock_df = inventory_df[inventory_df["fazla_stok_mu"]].copy()
-score = ayca_score(sales_df, inventory_df, current_margin)
+pareto_df = make_pareto_inventory(inventory_df)
+score = ayca_score(current_stats, inventory_df, critical_df, no_stock_df, high_stock_df)
+
+# Ana özet tablolar
+kurum_df = period_df.groupby("kurum", as_index=False).agg(
+    ciro=("ciro", "sum"),
+    kar=("brut_kar", "sum"),
+    maliyet=("maliyet", "sum"),
+    islem=("satis_no", "nunique"),
+    tahsilat_acigi=("tahsilat_acigi", "sum"),
+).sort_values("ciro", ascending=False)
+kurum_df["marj"] = np.where(kurum_df["ciro"] > 0, kurum_df["kar"] / kurum_df["ciro"], 0)
+kurum_df["ortalama_sepet"] = np.where(kurum_df["islem"] > 0, kurum_df["ciro"] / kurum_df["islem"], 0)
+
+doktor_df = period_df.groupby("doktor", as_index=False).agg(
+    ciro=("ciro", "sum"),
+    kar=("brut_kar", "sum"),
+    islem=("satis_no", "nunique"),
+).sort_values("ciro", ascending=False)
+doktor_df["marj"] = np.where(doktor_df["ciro"] > 0, doktor_df["kar"] / doktor_df["ciro"], 0)
+doktor_df["ortalama_sepet"] = np.where(doktor_df["islem"] > 0, doktor_df["ciro"] / doktor_df["islem"], 0)
+
+weekday_df = period_df.groupby(["hafta_gunu_no", "hafta_gunu"], as_index=False).agg(
+    ciro=("ciro", "sum"),
+    kar=("brut_kar", "sum"),
+    islem=("satis_no", "nunique"),
+    gun_sayisi=("gun", "nunique"),
+).sort_values("hafta_gunu_no")
+weekday_df["gunluk_ortalama_ciro"] = np.where(weekday_df["gun_sayisi"] > 0, weekday_df["ciro"] / weekday_df["gun_sayisi"], 0)
+weekday_df["marj"] = np.where(weekday_df["ciro"] > 0, weekday_df["kar"] / weekday_df["ciro"], 0)
+
+hourly_df = period_df.groupby("saat", as_index=False).agg(
+    ciro=("ciro", "sum"),
+    kar=("brut_kar", "sum"),
+    islem=("satis_no", "nunique"),
+).sort_values("saat")
+
+daily_df = period_df.groupby("gun", as_index=False).agg(
+    ciro=("ciro", "sum"),
+    kar=("brut_kar", "sum"),
+    islem=("satis_no", "nunique"),
+    tahsilat_acigi=("tahsilat_acigi", "sum"),
+)
+daily_df["marj"] = np.where(daily_df["ciro"] > 0, daily_df["kar"] / daily_df["ciro"], 0)
+daily_df = detect_daily_anomalies(daily_df)
+
+best_day = None
+worst_day = None
+if not weekday_df.empty:
+    best_day = weekday_df.sort_values("gunluk_ortalama_ciro", ascending=False).iloc[0]["hafta_gunu"]
+    worst_day = weekday_df.sort_values("gunluk_ortalama_ciro", ascending=True).iloc[0]["hafta_gunu"]
+
+top_kurum = kurum_df.iloc[0]["kurum"] if not kurum_df.empty else ""
+top_doctor = doktor_df.iloc[0]["doktor"] if not doktor_df.empty else ""
+ai_comment = create_ai_comment(current_stats, previous_stats, critical_df, no_stock_df, high_stock_df, best_day, worst_day, top_kurum, top_doctor)
+actions = create_action_items(current_stats, previous_stats, critical_df, no_stock_df, high_stock_df, pareto_df, daily_df)
 
 
 # ============================================================
@@ -624,55 +780,59 @@ st.markdown(
     f"""
     <div class="ayca-header">
         <div class="ayca-title">
-            <h1>AYÇA Insight V5.1</h1>
+            <h1>AYÇA Insight V6.0</h1>
             <p>{eczane_adi} · {selected_period} · Satış: {sales_sheet} · Envanter: {inv_sheet} · {today_str}</p>
         </div>
-        <div class="header-pill">AYÇA Skoru: {score}/100</div>
+        <div class="header-pill">AYÇA Sağlık Puanı: {score}/100 · {score_status(score)}</div>
     </div>
     """,
     unsafe_allow_html=True,
 )
 
-ciro_trend, ciro_class = rate_fmt(current_ciro, previous_ciro)
-profit_trend, profit_class = rate_fmt(current_profit, previous_profit)
-margin_trend, margin_class = rate_fmt(current_margin, previous_margin)
-basket_trend, basket_class = rate_fmt(avg_basket, prev_avg_basket)
+ciro_trend, ciro_class = rate_fmt(current_stats["ciro"], previous_stats["ciro"])
+profit_trend, profit_class = rate_fmt(current_stats["kar"], previous_stats["kar"])
+margin_trend, margin_class = rate_fmt(current_stats["marj"], previous_stats["marj"])
+basket_trend, basket_class = rate_fmt(current_stats["ortalama_sepet"], previous_stats["ortalama_sepet"])
 
-k1, k2, k3, k4, k5 = st.columns(5)
-with k1: make_metric_card("Güncel Ciro", money_fmt(current_ciro), selected_period, ciro_trend, ciro_class)
-with k2: make_metric_card("Brüt Kâr", money_fmt(current_profit), "Satış Exceli", profit_trend, profit_class)
-with k3: make_metric_card("Kâr Marjı", pct_fmt(current_margin), "Brüt kâr / ciro", margin_trend, margin_class)
-with k4: make_metric_card("İşlem Sayısı", f"{current_transactions}", "Tekil satış no")
-with k5: make_metric_card("Ortalama Sepet", money_fmt(avg_basket), "Ciro / işlem", basket_trend, basket_class)
+k1, k2, k3, k4, k5, k6 = st.columns(6)
+with k1: make_metric_card("Güncel Ciro", money_fmt(current_stats["ciro"]), selected_period, ciro_trend, ciro_class)
+with k2: make_metric_card("Brüt Kâr", money_fmt(current_stats["kar"]), "Satış Exceli", profit_trend, profit_class)
+with k3: make_metric_card("Kâr Marjı", pct_fmt(current_stats["marj"]), "Brüt kâr / ciro", margin_trend, margin_class)
+with k4: make_metric_card("İşlem Sayısı", f"{current_stats['islem']}", "Tekil satış no")
+with k5: make_metric_card("Ortalama Sepet", money_fmt(current_stats["ortalama_sepet"]), "Ciro / işlem", basket_trend, basket_class)
+with k6: make_metric_card("İşlem Başı Kâr", money_fmt(current_stats["recete_basi_kar"]), "Brüt kâr / işlem")
 
 
 # ============================================================
 # EXECUTIVE ÖZET
 # ============================================================
-ai_comment = create_ai_comment(sales_df, inventory_df, critical_df, no_stock_df, high_stock_df, current_ciro, previous_ciro, current_margin)
+stock_value = inventory_df["stok_degeri"].sum()
+high_stock_value = high_stock_df["stok_degeri"].sum()
+pareto_a_count = int((pareto_df["pareto_sinif"] == "A - Sermaye Yoğun").sum()) if not pareto_df.empty else 0
 health_items = {
-    "Kârlılık": max(0, min(100, int(60 + current_margin * 160))),
+    "Kârlılık": max(0, min(100, int(55 + current_stats["marj"] * 180))),
+    "Tahsilat": max(0, min(100, int(current_stats["tahsilat_orani"] * 100))),
     "Stok Yönetimi": max(0, min(100, int(100 - (len(critical_df) / max(1, len(inventory_df)) * 70) - (len(no_stock_df) / max(1, len(inventory_df)) * 40)))),
-    "Nakit Verimliliği": max(0, min(100, int(100 - (high_stock_df["stok_degeri"].sum() / max(1, inventory_df["stok_degeri"].sum()) * 80)))),
-    "Satış Performansı": max(0, min(100, int(70 + (((current_ciro - previous_ciro) / previous_ciro) * 40 if previous_ciro else 0))))
+    "Nakit Verimliliği": max(0, min(100, int(100 - (high_stock_value / max(1, stock_value) * 80)))),
 }
 health_html = "".join([
     f'<div class="health-row"><div class="health-head"><span>{k}</span><span>{v}/100</span></div><div class="health-bar-bg"><div class="health-bar-fill" style="width:{v}%;"></div></div></div>'
     for k, v in health_items.items()
 ])
 
+action_html = "".join([f"<div class='exec-list-item'>{item}</div>" for item in actions])
+
 st.markdown(
     f"""
     <div class="exec-grid">
         <div class="exec-card">
             <div class="exec-title">🤖 Günaydın {kullanici_adi}</div>
-            <div class="exec-sub">AYÇA iki Excel dosyasını beraber yorumladı.</div>
+            <div class="exec-sub">AYÇA, ürün satış raporu olmadan mevcut satış ve envanter dosyalarından güvenilir yönetim özeti çıkardı.</div>
             <div class="exec-list-item">{ai_comment}</div>
-            <div class="exec-list-item">📦 Toplam ürün: <b>{len(inventory_df)}</b> · Toplam stok değeri: <b>{money_fmt(inventory_df['stok_degeri'].sum())}</b></div>
-            <div class="exec-list-item">🔴 Kritik stok: <b>{len(critical_df)}</b> · ⛔ Stok yok: <b>{len(no_stock_df)}</b> · 📦 Yüksek stok: <b>{len(high_stock_df)}</b></div>
+            {action_html}
         </div>
         <div class="exec-card">
-            <div class="exec-sub">Eczane Sağlık Skoru</div>
+            <div class="exec-sub">Eczane Sağlık Puanı</div>
             <div class="score-big">{score}</div>
             <div class="exec-sub">Durum: <b>{score_status(score)}</b></div>
             {health_html}
@@ -682,25 +842,28 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-r1, r2, r3, r4 = st.columns(4)
-with r1: make_mini_card("Kritik Stok", str(len(critical_df)), "Stok kritik seviyede", "alert-red" if len(critical_df) else "alert-green")
-with r2: make_mini_card("Stok Yok", str(len(no_stock_df)), "Satış kaçırma riski", "alert-red" if len(no_stock_df) else "alert-green")
-with r3: make_mini_card("Yüksek Stok", str(len(high_stock_df)), f"{money_fmt(high_stock_df['stok_degeri'].sum())} bağlı para", "alert-orange" if len(high_stock_df) else "alert-green")
-with r4: make_mini_card("Toplam Stok Değeri", money_fmt(inventory_df["stok_degeri"].sum()), "Mal Top KDV dahil / PSF toplam", "alert-blue")
+r1, r2, r3, r4, r5 = st.columns(5)
+with r1: make_mini_card("Tahsilat Açığı", money_fmt(current_stats["tahsilat_acigi"]), "Toplam tutar - ödenen tutar", "alert-red" if current_stats["tahsilat_acigi"] > 0 else "alert-green")
+with r2: make_mini_card("Sonlanmamış Satış", str(current_stats["sonlanmamis"]), "Gün sonu kontrolü", "alert-orange" if current_stats["sonlanmamis"] else "alert-green")
+with r3: make_mini_card("Kritik / Yok", f"{len(critical_df)} / {len(no_stock_df)}", "Kritik stok ve stok yok", "alert-red" if len(critical_df) + len(no_stock_df) else "alert-green")
+with r4: make_mini_card("Yüksek Stok", str(len(high_stock_df)), f"{money_fmt(high_stock_value)} bağlı para", "alert-orange" if len(high_stock_df) else "alert-green")
+with r5: make_mini_card("Pareto Ürünleri", str(pareto_a_count), "Stok sermayesinin yaklaşık %80'i", "alert-purple")
 
 
 # ============================================================
 # SAYFALAR
 # ============================================================
-pages = ["🏠 Genel", "📈 Satış Analizi", "📦 Envanter", "🔴 Kritik Stok", "💰 Kârlılık", "📥 Rapor"]
+pages = ["🏠 Sabah Ekranı", "📈 Ciro Analizi", "🏥 Kurum & Doktor", "💰 Kârlılık", "📦 Stok Sermayesi", "🔴 Risk Listeleri", "📥 Rapor"]
 page = st.radio("Bölüm", pages, horizontal=True, label_visibility="collapsed")
 
-if page == "🏠 Genel":
+if page == "🏠 Sabah Ekranı":
     c1, c2 = st.columns(2)
     with c1:
-        st.markdown('<div class="section-title">Günlük Ciro Trendi</div>', unsafe_allow_html=True)
-        daily = period_df.groupby("gun", as_index=False).agg(ciro=("ciro", "sum"), kar=("brut_kar", "sum"), islem=("satis_no", "nunique"))
-        fig = px.line(daily, x="gun", y="ciro", markers=True, title="Günlük Ciro")
+        st.markdown('<div class="section-title">Günlük Ciro ve Kâr</div>', unsafe_allow_html=True)
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(x=daily_df["gun"], y=daily_df["ciro"], mode="lines+markers", name="Ciro"))
+        fig.add_trace(go.Scatter(x=daily_df["gun"], y=daily_df["kar"], mode="lines+markers", name="Brüt Kâr"))
+        fig.update_layout(title="Günlük Ciro / Kâr")
         st.plotly_chart(apply_plot_theme(fig), use_container_width=True)
     with c2:
         st.markdown('<div class="section-title">Tahsilat Dağılımı</div>', unsafe_allow_html=True)
@@ -708,98 +871,141 @@ if page == "🏠 Genel":
         fig = px.pie(tah, names="tahsilat", values="ciro", title="Tahsilata Göre Ciro")
         st.plotly_chart(apply_plot_theme(fig), use_container_width=True)
 
-    st.markdown('<div class="section-title">Bugünün Öncelikleri</div>', unsafe_allow_html=True)
-    todo = []
-    if not critical_df.empty:
-        row = critical_df.sort_values("stok").iloc[0]
-        todo.append(f"🔴 {row['urun']} kritik stokta. Stok: {num_fmt(row['stok'],0)}")
-    if not no_stock_df.empty:
-        todo.append(f"⛔ {len(no_stock_df)} ürün stokta yok. En çok ihtiyaç duyulan ürünler manuel kontrol edilmeli.")
-    if not high_stock_df.empty:
-        row = high_stock_df.sort_values("stok_degeri", ascending=False).iloc[0]
-        todo.append(f"📦 {row['urun']} yüksek stok değerinde öne çıkıyor. Bağlı para: {money_fmt(row['stok_degeri'])}")
-    if current_margin < 0.12:
-        todo.append("💰 Kâr marjı düşük. İndirim, maliyet ve satış fiyatı kontrol edilmeli.")
-    if not todo:
-        todo.append("✅ Kritik aksiyon görünmüyor. Günlük satış ve stok dengesi takip edilmeli.")
-    for t in todo[:5]:
-        st.markdown(f"<div class='exec-list-item'>{t}</div>", unsafe_allow_html=True)
+    st.markdown('<div class="section-title">Bugünün Aksiyon Listesi</div>', unsafe_allow_html=True)
+    for item in actions:
+        st.markdown(f"<div class='exec-list-item'>{item}</div>", unsafe_allow_html=True)
 
-elif page == "📈 Satış Analizi":
-    st.markdown('<div class="section-title">Satış Tipi ve Kurum Analizi</div>', unsafe_allow_html=True)
+    st.markdown(
+        """
+        <div class="ai-card">
+            <div class="ai-title">Bilinçli Veri Sınırı</div>
+            <div class="ai-text">
+            Bu sürümde ürün satış raporu olmadığı için ürün bazlı satış hızı, otomatik sipariş önerisi, gerçek ölü stok ve miad riski hesaplanmaz.
+            Bu analizleri gerçekmiş gibi üretmek yerine, mevcut satış özeti ve envanter verisinden güvenilir finans/stok sermayesi yorumu yapılır.
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+elif page == "📈 Ciro Analizi":
+    st.markdown('<div class="section-title">Satış Ritmi</div>', unsafe_allow_html=True)
     c1, c2 = st.columns(2)
     with c1:
+        fig = px.bar(weekday_df, x="hafta_gunu", y="gunluk_ortalama_ciro", title="Hafta Gününe Göre Ortalama Ciro")
+        st.plotly_chart(apply_plot_theme(fig), use_container_width=True)
+    with c2:
+        fig = px.bar(hourly_df, x="saat", y="ciro", title="Saatlere Göre Ciro")
+        st.plotly_chart(apply_plot_theme(fig), use_container_width=True)
+
+    c3, c4 = st.columns(2)
+    with c3:
         sales_type = period_df.groupby("satis_tipi", as_index=False).agg(ciro=("ciro", "sum"), kar=("brut_kar", "sum"), islem=("satis_no", "nunique")).sort_values("ciro", ascending=False)
         fig = px.bar(sales_type, x="satis_tipi", y="ciro", title="Satış Tipine Göre Ciro")
         st.plotly_chart(apply_plot_theme(fig), use_container_width=True)
-    with c2:
-        kurum = period_df.groupby("kurum", as_index=False)["ciro"].sum().sort_values("ciro", ascending=False).head(10)
-        fig = px.bar(kurum, x="ciro", y="kurum", orientation="h", title="İlk 10 Kurum")
+    with c4:
+        fig = px.scatter(daily_df, x="ciro", y="kar", size="islem", hover_name="gun", title="Gün Bazlı Ciro / Kâr İlişkisi")
         st.plotly_chart(apply_plot_theme(fig), use_container_width=True)
 
-    show_cols = ["tarih", "satis_no", "satis_tipi", "tahsilat", "kurum", "ciro", "brut_kar", "maliyet", "kar_marji", "sonlandi"]
-    if show_patient_columns:
-        show_cols.insert(4, "hasta")
-    st.dataframe(period_df[show_cols].sort_values("tarih", ascending=False), use_container_width=True, hide_index=True)
+    st.markdown('<div class="section-title">Günlük Detay</div>', unsafe_allow_html=True)
+    st.dataframe(daily_df.sort_values("gun", ascending=False), use_container_width=True, hide_index=True)
 
-elif page == "📦 Envanter":
-    st.markdown('<div class="section-title">Envanter Genel Görünüm</div>', unsafe_allow_html=True)
+elif page == "🏥 Kurum & Doktor":
+    st.markdown('<div class="section-title">Kurum ve Doktor Performansı</div>', unsafe_allow_html=True)
+    c1, c2 = st.columns(2)
+    with c1:
+        top_kurum_df = kurum_df.head(12).copy()
+        fig = px.bar(top_kurum_df, x="ciro", y="kurum", orientation="h", title="İlk 12 Kurum - Ciro")
+        st.plotly_chart(apply_plot_theme(fig, height=460), use_container_width=True)
+    with c2:
+        top_doc_df = doktor_df[doktor_df["doktor"].str.lower() != "nan"].head(12).copy()
+        fig = px.bar(top_doc_df, x="ciro", y="doktor", orientation="h", title="İlk 12 Doktor - Ciro")
+        st.plotly_chart(apply_plot_theme(fig, height=460), use_container_width=True)
+
+    t1, t2 = st.tabs(["Kurum Detayı", "Doktor Detayı"])
+    with t1:
+        st.dataframe(kurum_df, use_container_width=True, hide_index=True)
+    with t2:
+        st.dataframe(doktor_df, use_container_width=True, hide_index=True)
+
+elif page == "💰 Kârlılık":
+    st.markdown('<div class="section-title">Kârlılık ve Tahsilat Kontrolü</div>', unsafe_allow_html=True)
+    c1, c2 = st.columns(2)
+    with c1:
+        fig = px.line(daily_df, x="gun", y="marj", markers=True, title="Günlük Brüt Marj")
+        st.plotly_chart(apply_plot_theme(fig), use_container_width=True)
+    with c2:
+        profit_by_type = period_df.groupby("satis_tipi", as_index=False).agg(kar=("brut_kar", "sum"), ciro=("ciro", "sum"), maliyet=("maliyet", "sum"))
+        profit_by_type["marj"] = np.where(profit_by_type["ciro"] > 0, profit_by_type["kar"] / profit_by_type["ciro"], 0)
+        fig = px.bar(profit_by_type, x="satis_tipi", y="kar", title="Satış Tipine Göre Brüt Kâr")
+        st.plotly_chart(apply_plot_theme(fig), use_container_width=True)
+
+    c3, c4, c5 = st.columns(3)
+    with c3: make_mini_card("Tahsilat Oranı", pct_fmt(current_stats["tahsilat_orani"]), "Ödenen / toplam ciro", "alert-green" if current_stats["tahsilat_orani"] > 0.95 else "alert-orange")
+    with c4: make_mini_card("İskonto Toplamı", money_fmt(period_df["iskonto"].sum()), "Seçili dönem", "alert-blue")
+    with c5: make_mini_card("Fiyat Farkı", money_fmt(period_df["fiyat_farki"].sum()), "Seçili dönem", "alert-purple")
+
+    st.dataframe(profit_by_type.sort_values("kar", ascending=False), use_container_width=True, hide_index=True)
+
+elif page == "📦 Stok Sermayesi":
+    st.markdown('<div class="section-title">Stok Sermayesi ve Pareto Analizi</div>', unsafe_allow_html=True)
     c1, c2 = st.columns(2)
     with c1:
         status = inventory_df.groupby("stok_durumu", as_index=False).agg(urun_sayisi=("urun", "count"), stok_degeri=("stok_degeri", "sum"))
-        fig = px.bar(status, x="stok_durumu", y="urun_sayisi", title="Stok Durumu Dağılımı")
+        fig = px.bar(status, x="stok_durumu", y="stok_degeri", title="Stok Durumuna Göre Sermaye")
         st.plotly_chart(apply_plot_theme(fig), use_container_width=True)
     with c2:
+        pareto_plot = pareto_df.head(80).copy()
+        fig = px.line(pareto_plot, x=np.arange(1, len(pareto_plot) + 1), y="kumulatif_oran", title="Stok Sermayesi Pareto Eğrisi")
+        fig.update_xaxes(title="Ürün sırası")
+        fig.update_yaxes(title="Kümülatif oran", tickformat=".0%")
+        st.plotly_chart(apply_plot_theme(fig), use_container_width=True)
+
+    c3, c4 = st.columns(2)
+    with c3:
         top_stock = inventory_df.sort_values("stok_degeri", ascending=False).head(15)
         fig = px.bar(top_stock, x="stok_degeri", y="urun", orientation="h", title="Stok Değeri En Yüksek 15 Ürün")
-        st.plotly_chart(apply_plot_theme(fig, height=440), use_container_width=True)
-    inv_cols = ["barkod", "urun", "stok", "kritik_stok", "stok_durumu", "psf", "kamu", "raf", "kdv", "stok_degeri"]
-    st.dataframe(inventory_df[inv_cols].sort_values("stok_degeri", ascending=False), use_container_width=True, hide_index=True)
+        st.plotly_chart(apply_plot_theme(fig, height=500), use_container_width=True)
+    with c4:
+        kdv_df = inventory_df.groupby("kdv", as_index=False).agg(stok_degeri=("stok_degeri", "sum"), urun_sayisi=("urun", "count"))
+        fig = px.pie(kdv_df, names="kdv", values="stok_degeri", title="KDV Grubuna Göre Stok Sermayesi")
+        st.plotly_chart(apply_plot_theme(fig, height=500), use_container_width=True)
 
-elif page == "🔴 Kritik Stok":
-    st.markdown('<div class="section-title">Kritik Stok ve Stok Yok Listeleri</div>', unsafe_allow_html=True)
-    t1, t2, t3 = st.tabs(["Kritik Stok", "Stok Yok", "Yüksek Stok"])
+    st.dataframe(pareto_df[["barkod", "urun", "stok", "psf", "raf", "stok_degeri", "kumulatif_oran", "pareto_sinif"]].head(300), use_container_width=True, hide_index=True)
+
+elif page == "🔴 Risk Listeleri":
+    st.markdown('<div class="section-title">Risk Listeleri</div>', unsafe_allow_html=True)
+    t1, t2, t3, t4 = st.tabs(["Kritik Stok", "Stok Yok", "Yüksek Stok", "Satış/Tahsilat Riski"])
     with t1:
         st.dataframe(critical_df[["barkod", "urun", "stok", "kritik_stok", "psf", "raf", "stok_degeri"]].sort_values("stok"), use_container_width=True, hide_index=True)
     with t2:
         st.dataframe(no_stock_df[["barkod", "urun", "stok", "kritik_stok", "psf", "raf"]].sort_values("urun"), use_container_width=True, hide_index=True)
     with t3:
         st.dataframe(high_stock_df[["barkod", "urun", "stok", "psf", "raf", "stok_degeri"]].sort_values("stok_degeri", ascending=False), use_container_width=True, hide_index=True)
-
-elif page == "💰 Kârlılık":
-    st.markdown('<div class="section-title">Kârlılık ve Nakit Akışı</div>', unsafe_allow_html=True)
-    c1, c2 = st.columns(2)
-    with c1:
-        daily = period_df.groupby("gun", as_index=False).agg(ciro=("ciro", "sum"), kar=("brut_kar", "sum"), maliyet=("maliyet", "sum"))
-        daily["marj"] = np.where(daily["ciro"] > 0, daily["kar"] / daily["ciro"], 0)
-        fig = px.line(daily, x="gun", y="marj", markers=True, title="Günlük Brüt Marj")
-        st.plotly_chart(apply_plot_theme(fig), use_container_width=True)
-    with c2:
-        profit_by_type = period_df.groupby("satis_tipi", as_index=False).agg(kar=("brut_kar", "sum"), ciro=("ciro", "sum"))
-        profit_by_type["marj"] = np.where(profit_by_type["ciro"] > 0, profit_by_type["kar"] / profit_by_type["ciro"], 0)
-        fig = px.bar(profit_by_type, x="satis_tipi", y="kar", title="Satış Tipine Göre Brüt Kâr")
-        st.plotly_chart(apply_plot_theme(fig), use_container_width=True)
-    st.dataframe(profit_by_type.sort_values("kar", ascending=False), use_container_width=True, hide_index=True)
+    with t4:
+        risk_cols = ["tarih", "satis_no", "satis_tipi", "tahsilat", "kurum", "doktor", "ciro", "odenen", "tahsilat_acigi", "brut_kar", "kar_marji", "sonlandi"]
+        risk_df = period_df[(period_df["tahsilat_acigi"] > 0) | (~period_df["sonlandi"])].copy()
+        if show_patient_columns:
+            risk_cols.insert(4, "hasta")
+        st.dataframe(risk_df[risk_cols].sort_values("tarih", ascending=False), use_container_width=True, hide_index=True)
 
 elif page == "📥 Rapor":
     st.markdown('<div class="section-title">Excel Raporu</div>', unsafe_allow_html=True)
-    report = create_excel_report(sales_df, inventory_df, critical_df, no_stock_df, high_stock_df)
+    report = create_excel_report(sales_df, inventory_df, period_df, critical_df, no_stock_df, high_stock_df, pareto_df, kurum_df, doktor_df, weekday_df, hourly_df)
     st.download_button(
-        "📥 AYÇA Insight Raporunu İndir",
+        "📥 AYÇA Insight V6.0 Raporunu İndir",
         data=report,
-        file_name=f"ayca_insight_iki_excel_rapor_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx",
+        file_name=f"ayca_insight_v6_rapor_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         use_container_width=True,
     )
     st.markdown(
         """
         <div class="ai-card">
-            <div class="ai-title">Bu sürümde bilinçli ayrım</div>
+            <div class="ai-title">Ürün satış raporu gelince açılacak motorlar</div>
             <div class="ai-text">
-            Satış Exceliniz ürün satır detayı içermediği için barkod/ürün bazlı satış hızı hesaplanmaz.
-            Bu nedenle miad ve ürün bazlı son 60 gün çıkış analizi kapalıdır. Satış dosyasından ciro/kâr/tahsilat;
-            envanter dosyasından stok/kritik stok/stok değeri analiz edilir.
-            Ürün bazlı satış detayı olan ayrı bir satış kalemleri raporu eklendiğinde sistem barkod bazında stok bitiş tahmini de yapabilir.
+            Ürün satış raporu geldiğinde bu yapıya üçüncü dosya olarak eklenecek. Barkod üzerinden satış ve envanter birleşince
+            satış hızı, stok bitiş günü, sipariş önerisi, gerçek ölü stok, ABC/XYZ ve miad riski modülleri aktif edilecek.
             </div>
         </div>
         """,
