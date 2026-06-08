@@ -1,5 +1,5 @@
 # ============================================================
-# AYÇA Insight V7.0 - 3 Excel Ürün Zekası Sürümü
+# AYÇA Insight V7.1 - 3 Excel Ürün Zekası Sürümü
 # ------------------------------------------------------------
 # Zorunlu / Önerilen dosyalar:
 # 1) Envanter Exceli
@@ -43,7 +43,7 @@ import streamlit as st
 # STREAMLIT AYARI
 # ============================================================
 st.set_page_config(
-    page_title="AYÇA Insight V7.0",
+    page_title="AYÇA Insight V7.1",
     page_icon="💊",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -148,7 +148,7 @@ def show_demo_auth_screen():
         st.markdown(
             """
             <div class="ai-card">
-                <div class="ai-title">AYÇA Insight V7.0</div>
+                <div class="ai-title">AYÇA Insight V7.1</div>
                 <div class="ai-text">
                 Bu sürüm üç TEBEOS Excel çıktısını birlikte okur: <b>Envanter</b>, <b>Ürün Bazında Toplamlar</b> ve <b>Satış Hareketleri</b>.
                 Böylece ürün bazlı satış hızı, stok bitiş günü, sipariş tavsiyesi, ölü stok ve kârlılık motoru aktif olur.
@@ -723,9 +723,9 @@ st.sidebar.caption("V7.0 · 3 Excel Ürün Zekası")
 eczane_adi = st.sidebar.text_input("Eczane Adı", value="İdil Eczanesi")
 kullanici_adi = st.sidebar.text_input("Kullanıcı", value="Abdullah Bey")
 
-inventory_file = st.sidebar.file_uploader("1) Envanter Exceli", type=["xlsx", "xls"], key="inventory_file")
-product_file = st.sidebar.file_uploader("2) Ürün Bazında Toplamlar Exceli", type=["xlsx", "xls"], key="product_file")
-sales_file = st.sidebar.file_uploader("3) Satış Hareketleri Exceli", type=["xlsx", "xls"], key="sales_file")
+inventory_file = st.sidebar.file_uploader("1/3) Envanter Exceli - ZORUNLU", type=["xlsx", "xls"], key="inventory_file")
+product_file = st.sidebar.file_uploader("2/3) Ürün Bazında Toplamlar Exceli - ZORUNLU", type=["xlsx", "xls"], key="product_file")
+sales_file = st.sidebar.file_uploader("3/3) Satış Hareketleri Exceli - ZORUNLU", type=["xlsx", "xls"], key="sales_file")
 
 st.sidebar.markdown("---")
 selected_period = st.sidebar.selectbox("Satış hareket dönemi", ["Son 7 gün", "Son 14 gün", "Son 30 gün", "Tüm veri"], index=2)
@@ -745,7 +745,7 @@ if inventory_file is None or product_file is None or sales_file is None:
         f"""
         <div class="ayca-header">
             <div class="ayca-title">
-                <h1>AYÇA Insight V7.0</h1>
+                <h1>AYÇA Insight V7.1</h1>
                 <p>{eczane_adi} · Üç Excel dosyasını yükle: envanter, ürün bazında toplamlar, satış hareketleri.</p>
             </div>
             <div class="header-pill">Dosya bekleniyor</div>
@@ -853,7 +853,7 @@ st.markdown(
     f"""
     <div class="ayca-header">
         <div class="ayca-title">
-            <h1>AYÇA Insight V7.0</h1>
+            <h1>AYÇA Insight V7.1</h1>
             <p>{eczane_adi} · {selected_period} · Gün hesabı: {analysis_days} gün · {today_str}</p>
         </div>
         <div class="header-pill">AYÇA Ürün Puanı: {score}/100 · {score_status(score)}</div>
@@ -1066,7 +1066,7 @@ elif page == "📥 Rapor":
     st.markdown('<div class="section-title">Excel Raporu</div>', unsafe_allow_html=True)
     report = create_excel_report(product_master, sales_df, period_df, kurum_df, doktor_df, daily_df, weekday_df, hourly_df)
     st.download_button(
-        "📥 AYÇA Insight V7.0 Raporunu İndir",
+        "📥 AYÇA Insight V7.1 Raporunu İndir",
         data=report,
         file_name=f"ayca_insight_v7_rapor_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
