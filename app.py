@@ -1,5 +1,5 @@
 # ============================================================
-# AYÇA Insight V7.3 - Ürün Zekası + Doktor Intelligence + Hasta Sadakat Sürümü
+# AYÇA Insight V8.0 - Asistan + Sağlık Karnesi + Ürün Fırsatları Sürümü
 # ------------------------------------------------------------
 # Zorunlu / Önerilen dosyalar:
 # 1) Envanter Exceli
@@ -43,7 +43,7 @@ import streamlit as st
 # STREAMLIT AYARI
 # ============================================================
 st.set_page_config(
-    page_title="AYÇA Insight V7.3",
+    page_title="AYÇA Insight V8.0",
     page_icon="💊",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -148,7 +148,7 @@ def show_demo_auth_screen():
         st.markdown(
             """
             <div class="ai-card">
-                <div class="ai-title">AYÇA Insight V7.3</div>
+                <div class="ai-title">AYÇA Insight V8.0</div>
                 <div class="ai-text">
                 Bu sürüm üç TEBEOS Excel çıktısını birlikte okur: <b>Envanter</b>, <b>Ürün Bazında Toplamlar</b> ve <b>Satış Hareketleri</b>.
                 Böylece ürün bazlı satış hızı, stok bitiş günü, sipariş tavsiyesi, ölü stok ve kârlılık motoru aktif olur.
@@ -769,6 +769,134 @@ def build_doctor_intelligence(period_df: pd.DataFrame, all_sales_df: pd.DataFram
     }
 
 
+
+def build_business_insights(product_master: pd.DataFrame, current_stats: dict, previous_stats: dict, order_budget_info: dict, score_items: dict) -> dict:
+    """Mevcut 3 dosyayla üretilebilen ileri karar destek içgörüleri."""
+    pm = product_master.copy()
+    if pm.empty:
+        empty = pd.DataFrame()
+        return {
+            "carrier_50": empty, "carrier_80": empty, "silent_loss": empty, "lost_product_candidates": empty,
+            "assistant_cards": [], "health_notes": [], "summary": {}
+        }
+
+    # Eczaneyi taşıyan ürünler: ciro kümülatif payına göre %50 ve %80 eşiği.
+    carrier = pm[pm["satis_tutari"] > 0].sort_values("satis_tutari", ascending=False).copy()
+    total_sales = float(carrier["satis_tutari"].sum())
+    if total_sales > 0:
+        carrier["kumulatif_ciro"] = carrier["satis_tutari"].cumsum()
+        carrier["kumulatif_ciro_payi"] = carrier["kumulatif_ciro"] / total_sales
+    else:
+        carrier["kumulatif_ciro"] = 0
+        carrier["kumulatif_ciro_payi"] = 0
+    carrier_50 = carrier[carrier["kumulatif_ciro_payi"] <= 0.50].copy()
+    if carrier_50.empty and not carrier.empty:
+        carrier_50 = carrier.head(1).copy()
+    carrier_80 = carrier[carrier["kumulatif_ciro_payi"] <= 0.80].copy()
+    if carrier_80.empty and not carrier.empty:
+        carrier_80 = carrier.head(1).copy()
+
+    # Sessiz kâr kaybı: çok satan/ciro yapan ama marjı düşük ürünler.
+    active = pm[(pm["satilan_adet"] > 0) & (pm["satis_tutari"] > 0)].copy()
+    if not active.empty:
+        sales_q75 = active["satis_tutari"].quantile(0.75)
+        margin_median = active["kar_marji"].median()
+        margin_limit = min(0.12, margin_median) if not pd.isna(margin_median) else 0.12
+        silent_loss = active[(active["satis_tutari"] >= sales_q75) & (active["kar_marji"] <= margin_limit)].copy()
+        silent_loss["potansiyel_marj_farki"] = np.maximum(0, 0.15 - silent_loss["kar_marji"])
+        silent_loss["tahmini_sessiz_kayip"] = silent_loss["satis_tutari"] * silent_loss["potansiyel_marj_farki"]
+        silent_loss = silent_loss.sort_values(["tahmini_sessiz_kayip", "satis_tutari"], ascending=False)
+    else:
+        silent_loss = pd.DataFrame()
+
+    # Kaybedilen ürünler: mevcut tek ürün toplam raporuyla gerçek trend hesaplanamaz.
+    # Bu nedenle burada stokta para bağlayan fakat dönem satış hızı zayıf/0 olan ürünler 'kaybedilen ürün adayı' olarak listelenir.
+    lost_candidates = pm[((pm["olu_stok_mu"]) | (pm["yavas_stok_mu"])) & (pm["stok_degeri"] > 0)].copy()
+    lost_candidates["kayip_urun_notu"] = np.where(
+        lost_candidates.get("olu_stok_mu", False),
+        "Dönemde satış yok, stok elde bekliyor",
+        "Satış hızı zayıf, stok uzun süre yetecek"
+    )
+    lost_candidates = lost_candidates.sort_values("stok_degeri", ascending=False)
+
+    # Sağlık karnesi yorumları.
+    health_notes = []
+    if score_items:
+        lowest = sorted(score_items.items(), key=lambda x: x[1])[0]
+        health_notes.append(f"Bu ay puanı en çok düşüren alan: {lowest[0]} ({lowest[1]}/100).")
+    dead_value = float(pm.loc[pm["olu_stok_mu"], "stok_degeri"].sum())
+    total_stock = float(pm["stok_degeri"].sum())
+    dead_ratio = safe_div(dead_value, total_stock)
+    if dead_ratio > 0.20:
+        health_notes.append(f"Ölü stok oranı yüksek: stok değerinin {pct_fmt(dead_ratio)} kadarı satış üretmiyor.")
+    elif dead_ratio > 0.05:
+        health_notes.append(f"Ölü stok izlenmeli: {money_fmt(dead_value)} tutarında hareketsiz stok var.")
+    if current_stats.get("marj", 0) < 0.12:
+        health_notes.append(f"Brüt marj düşük görünüyor: {pct_fmt(current_stats.get('marj', 0))}.")
+    if current_stats.get("tahsilat_acigi", 0) > 0:
+        health_notes.append(f"Tahsilat açığı kontrol edilmeli: {money_fmt(current_stats.get('tahsilat_acigi', 0))}.")
+    if not silent_loss.empty:
+        health_notes.append(f"Sessiz kâr kaybı adayı {len(silent_loss)} ürün var; ilk ürün {silent_loss.iloc[0]['urun']}.")
+
+    # AYÇA Asistan kartları.
+    urgent_count = int(pm.get("stokta_yok_satmis_mi", pd.Series(dtype=bool)).sum())
+    fast_count = int(pm.get("hizli_tukeniyor_mu", pd.Series(dtype=bool)).sum())
+    reorder_count = int(pm.get("siparis_gerekli_mi", pd.Series(dtype=bool)).sum())
+    top_profit = active.sort_values("kar_tutari", ascending=False).head(1) if not active.empty else pd.DataFrame()
+    assistant_cards = []
+    if urgent_count:
+        first = pm[pm["stokta_yok_satmis_mi"]].sort_values("satis_tutari", ascending=False).iloc[0]
+        assistant_cards.append(("🔴", "Satış Kaçırma Riski", f"{urgent_count} ürün satmış ama stok 0/eksi. İlk kontrol: {first['urun']}."))
+    if fast_count:
+        first = pm[pm["hizli_tukeniyor_mu"]].sort_values("stok_bitis_gunu").iloc[0]
+        day_text = num_fmt(first.get("stok_bitis_gunu_goster", 0), 1)
+        assistant_cards.append(("🟠", "Hızlı Tükenen Ürün", f"{fast_count} ürün 14 gün içinde bitebilir. En yakın risk: {first['urun']} ({day_text} gün)."))
+    if reorder_count:
+        assistant_cards.append(("🛒", "Bütçeli Sipariş", f"{reorder_count} ürün için {money_fmt(order_budget_info.get('final_total', 0))} sipariş öneriliyor."))
+    if not silent_loss.empty:
+        assistant_cards.append(("📉", "Sessiz Kâr Kaybı", f"{len(silent_loss)} çok satan düşük marjlı ürün var. İlk kontrol: {silent_loss.iloc[0]['urun']}."))
+    if not lost_candidates.empty:
+        assistant_cards.append(("🧊", "Hareketsiz Sermaye", f"{money_fmt(lost_candidates['stok_degeri'].sum())} tutarında ölü/yavaş stok adayı var."))
+    if not top_profit.empty:
+        row = top_profit.iloc[0]
+        assistant_cards.append(("💎", "En Karlı Ürün", f"{row['urun']} bu dönemde {money_fmt(row['kar_tutari'])} kâr bıraktı."))
+
+    summary = {
+        "carrier_50_count": int(len(carrier_50)),
+        "carrier_80_count": int(len(carrier_80)),
+        "silent_loss_count": int(len(silent_loss)),
+        "silent_loss_amount": float(silent_loss["tahmini_sessiz_kayip"].sum()) if not silent_loss.empty else 0.0,
+        "lost_candidate_count": int(len(lost_candidates)),
+        "lost_candidate_value": float(lost_candidates["stok_degeri"].sum()) if not lost_candidates.empty else 0.0,
+        "dead_ratio": dead_ratio,
+    }
+    return {
+        "carrier_50": carrier_50,
+        "carrier_80": carrier_80,
+        "silent_loss": silent_loss,
+        "lost_product_candidates": lost_candidates,
+        "assistant_cards": assistant_cards,
+        "health_notes": health_notes,
+        "summary": summary,
+    }
+
+
+def render_assistant_cards(cards):
+    if not cards:
+        st.markdown("<div class='exec-list-item'>✅ Kritik aksiyon görünmüyor. Günlük ciro, tahsilat ve stok hızını takip et.</div>", unsafe_allow_html=True)
+        return
+    for icon, title, text in cards:
+        st.markdown(
+            f"""
+            <div class="exec-list-item" style="display:flex;gap:12px;align-items:flex-start;">
+                <div style="font-size:22px;line-height:1;">{icon}</div>
+                <div><div style="font-weight:950;color:#0F172A;margin-bottom:3px;">{title}</div><div style="font-weight:700;color:#334155;">{text}</div></div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+
 def apply_order_budget(product_master: pd.DataFrame, order_budget_ratio: float) -> tuple[pd.DataFrame, dict]:
     """Sipariş önerisini mevcut stok değerinin seçilen oranına göre gerçekçi bütçeye indirir.
 
@@ -943,7 +1071,7 @@ def score_status(score_value: int) -> str:
     return "Riskli"
 
 
-def create_excel_report(product_master, sales_df, period_df, kurum_df, doktor_df, daily_df, weekday_df, hourly_df, doctor_kpi=None, doctor_products=None, patient_frequency=None, patient_lost=None):
+def create_excel_report(product_master, sales_df, period_df, kurum_df, doktor_df, daily_df, weekday_df, hourly_df, doctor_kpi=None, doctor_products=None, patient_frequency=None, patient_lost=None, business_insights=None):
     output = BytesIO()
     export_cols = [
         "barkod", "urun", "urun_grubu", "raf", "stok", "kritik_stok", "psf_final", "stok_degeri",
@@ -971,6 +1099,13 @@ def create_excel_report(product_master, sales_df, period_df, kurum_df, doktor_df
             patient_frequency.to_excel(writer, sheet_name="Hasta_Sadakat", index=False)
         if patient_lost is not None and not patient_lost.empty:
             patient_lost.to_excel(writer, sheet_name="Kaybedilen_Hastalar", index=False)
+        if business_insights:
+            if not business_insights.get("carrier_80", pd.DataFrame()).empty:
+                business_insights["carrier_80"].to_excel(writer, sheet_name="Tasiyan_Urunler", index=False)
+            if not business_insights.get("silent_loss", pd.DataFrame()).empty:
+                business_insights["silent_loss"].to_excel(writer, sheet_name="Sessiz_Kar_Kaybi", index=False)
+            if not business_insights.get("lost_product_candidates", pd.DataFrame()).empty:
+                business_insights["lost_product_candidates"].to_excel(writer, sheet_name="Kaybedilen_Urun_Aday", index=False)
     return output.getvalue()
 
 
@@ -985,7 +1120,7 @@ if st.sidebar.button("Çıkış Yap", use_container_width=True):
     safe_rerun()
 
 st.sidebar.title("💊 AYÇA Insight")
-st.sidebar.caption("V7.3 · Bütçe Kontrollü Sipariş + Ürün/Doktor/Hasta Zekası")
+st.sidebar.caption("V8.0 · Asistan + Sağlık Karnesi + Ürün/Doktor/Hasta Zekası")
 eczane_adi = st.sidebar.text_input("Eczane Adı", value="İdil Eczanesi")
 kullanici_adi = st.sidebar.text_input("Kullanıcı", value="Abdullah Bey")
 
@@ -1026,7 +1161,7 @@ if inventory_file is None or product_file is None or sales_file is None:
         f"""
         <div class="ayca-header">
             <div class="ayca-title">
-                <h1>AYÇA Insight V7.3</h1>
+                <h1>AYÇA Insight V8.0</h1>
                 <p>{eczane_adi} · Üç Excel dosyasını yükle: envanter, ürün bazında toplamlar, satış hareketleri.</p>
             </div>
             <div class="header-pill">Dosya bekleniyor</div>
@@ -1109,6 +1244,7 @@ daily_df["marj"] = np.where(daily_df["ciro"] > 0, daily_df["kar"] / daily_df["ci
 actions = create_action_items(product_master, current_stats, previous_stats, daily_df)
 patient_loyalty = build_patient_loyalty(period_df, sales_df)
 doctor_intel = build_doctor_intelligence(period_df, sales_df, product_master)
+business_insights = build_business_insights(product_master, current_stats, previous_stats, order_budget_info, score_items)
 
 # Segmentler
 reorder_df = product_master[product_master["siparis_gerekli_mi"]].sort_values("siparis_tahmini_tutar", ascending=False)
@@ -1137,7 +1273,7 @@ st.markdown(
     f"""
     <div class="ayca-header">
         <div class="ayca-title">
-            <h1>AYÇA Insight V7.3</h1>
+            <h1>AYÇA Insight V8.0</h1>
             <p>{eczane_adi} · {selected_period} · Gün hesabı: {analysis_days} gün · {today_str}</p>
         </div>
         <div class="header-pill">AYÇA Ürün Puanı: {score}/100 · {score_status(score)}</div>
@@ -1164,11 +1300,44 @@ with r3: make_mini_card("Ölü Stok", str(len(dead_df)), money_fmt(dead_df["stok
 with r4: make_mini_card("Yavaş Stok", str(len(slow_df)), money_fmt(slow_df["stok_degeri"].sum()), "alert-purple" if len(slow_df) else "alert-green")
 with r5: make_mini_card("Tahsilat Açığı", money_fmt(current_stats["tahsilat_acigi"]), f"Oran {pct_fmt(safe_div(current_stats['tahsilat_acigi'], current_stats['ciro']))}", "alert-red" if current_stats["tahsilat_acigi"] > 0 else "alert-green")
 
-b1, b2, b3, b4 = st.columns(4)
-with b1: make_mini_card("Sipariş Politikası", f"%{int(order_budget_info['budget_ratio']*100)}", "Mevcut stok değerine göre", "alert-blue")
-with b2: make_mini_card("Sipariş Bütçesi", money_fmt(order_budget_info["budget_limit"]), "Stok değerinin seçilen oranı", "alert-green")
-with b3: make_mini_card("Ham Öneri", money_fmt(order_budget_info["raw_total"]), "Limit öncesi algoritma çıktısı", "alert-orange" if order_budget_info["was_limited"] else "alert-green")
-with b4: make_mini_card("Kısılmış Öneri", money_fmt(order_budget_info["final_total"]), f"Kullanım: {pct_fmt(order_budget_info['budget_used_ratio'])}", "alert-purple")
+# Kullanıcı dostu sipariş özeti: teknik ham/kısılmış detaylar ana ekrandan kaldırıldı.
+top_order_names_global = reorder_df.head(3)["urun"].tolist() if not reorder_df.empty else []
+top_order_html_global = "".join([f"<span style='display:inline-block;background:#EFF6FF;border:1px solid #BFDBFE;border-radius:999px;padding:6px 10px;margin:4px 6px 0 0;font-weight:800;color:#1E3A8A;'>{x}</span>" for x in top_order_names_global]) or "<span style='color:#64748B;font-weight:800;'>Acil sipariş önerisi yok</span>"
+st.markdown(
+    f"""
+    <div style="background:linear-gradient(135deg,#FFFFFF 0%,#ECFDF5 55%,#EFF6FF 100%);border:1px solid #BFDBFE;border-radius:26px;padding:20px;margin:14px 0 18px 0;box-shadow:0 14px 34px rgba(15,23,42,.07);">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;">
+            <div style="min-width:280px;flex:1;">
+                <div style="font-size:22px;font-weight:950;color:#0F172A;letter-spacing:-.4px;">🛒 AYÇA Sipariş Asistanı</div>
+                <div style="font-size:14px;color:#475569;line-height:1.55;margin-top:6px;">
+                    Mevcut stok değeriniz <b>{money_fmt(order_budget_info['stock_value'])}</b>. AYÇA bu ay için stokun <b>%{int(order_budget_info['budget_ratio']*100)}</b>'si kadar, yani <b>{money_fmt(order_budget_info['final_total'])}</b> sipariş öneriyor.
+                </div>
+                <div style="margin-top:10px;">{top_order_html_global}</div>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(3,minmax(140px,1fr));gap:12px;min-width:420px;flex:1;">
+                <div style="background:#FFFFFF;border:1px solid #D1FAE5;border-radius:18px;padding:14px;">
+                    <div style="font-size:12px;color:#64748B;font-weight:900;text-transform:uppercase;">📦 Mevcut Stok</div>
+                    <div style="font-size:24px;font-weight:950;color:#0F172A;margin-top:8px;">{money_fmt(order_budget_info['stock_value'])}</div>
+                </div>
+                <div style="background:#FFFFFF;border:1px solid #BFDBFE;border-radius:18px;padding:14px;">
+                    <div style="font-size:12px;color:#64748B;font-weight:900;text-transform:uppercase;">🎯 Önerilen Sipariş</div>
+                    <div style="font-size:24px;font-weight:950;color:#2563EB;margin-top:8px;">{money_fmt(order_budget_info['final_total'])}</div>
+                    <div style="font-size:12px;color:#64748B;margin-top:4px;">Bütçe kullanımı {pct_fmt(order_budget_info['budget_used_ratio'])}</div>
+                </div>
+                <div style="background:#FFFFFF;border:1px solid #FECACA;border-radius:18px;padding:14px;">
+                    <div style="font-size:12px;color:#64748B;font-weight:900;text-transform:uppercase;">🚨 Kritik Ürün</div>
+                    <div style="font-size:24px;font-weight:950;color:#DC2626;margin-top:8px;">{len(reorder_df)}</div>
+                    <div style="font-size:12px;color:#64748B;margin-top:4px;">sipariş bekliyor</div>
+                </div>
+            </div>
+        </div>
+        <div style="height:10px;background:#E2E8F0;border-radius:999px;overflow:hidden;margin-top:16px;">
+            <div style="height:10px;background:linear-gradient(90deg,#10B981,#2563EB);border-radius:999px;width:{min(100, max(0, order_budget_info['budget_used_ratio']*100))}%;"></div>
+        </div>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
 
 health_html = "".join([
     f'<div class="health-row"><div class="health-head"><span>{k} <small>({score_weights[k]}%)</small></span><span>{v}/100</span></div><div class="health-bar-bg"><div class="health-bar-fill" style="width:{v}%;"></div></div></div>'
@@ -1199,7 +1368,7 @@ st.markdown(
 # ============================================================
 # SAYFALAR
 # ============================================================
-pages = ["🏠 Sabah Ekranı", "🛒 Sipariş Motoru", "📦 Ürün Zekası", "💰 Kârlılık", "🧊 Ölü/Yavaş Stok", "📈 Ciro & Tahsilat", "👨‍⚕️ Doktor Intelligence", "🧑‍🤝‍🧑 Hasta Sadakat", "🏥 Kurum & Doktor", "📥 Rapor"]
+pages = ["🎯 AYÇA Asistan", "🏠 Sabah Ekranı", "🩺 Sağlık Karnesi", "🛒 Sipariş Motoru", "📦 Ürün Zekası", "🏆 Taşıyan Ürünler", "📉 Sessiz Kâr Kaybı", "💰 Kârlılık", "🧊 Ölü/Yavaş Stok", "📈 Ciro & Tahsilat", "👨‍⚕️ Doktor Intelligence", "🧑‍🤝‍🧑 Hasta Sadakat", "🏥 Kurum Intelligence", "📥 Rapor"]
 page = st.radio("Bölüm", pages, horizontal=True, label_visibility="collapsed")
 
 product_cols = [
@@ -1207,6 +1376,108 @@ product_cols = [
     "satilan_adet", "satis_tutari", "kar_tutari", "kar_marji", "gunluk_satis_hizi", "stok_bitis_gunu_goster",
     "siparis_onerisi_ham", "siparis_tahmini_tutar_ham", "siparis_onerisi", "siparis_tahmini_tutar", "siparis_kisit_katsayisi", "abc_sinif", "aksiyon"
 ]
+
+
+if page == "🎯 AYÇA Asistan":
+    st.markdown('<div class="section-title">🎯 AYÇA Asistan</div>', unsafe_allow_html=True)
+    st.markdown(
+        f"""
+        <div class="exec-card" style="margin-bottom:16px;">
+            <div class="exec-title">🤖 Günaydın {kullanici_adi}</div>
+            <div class="exec-sub">AYÇA bugün eczanenin satış, stok, sipariş, kârlılık ve tahsilat verilerini özetledi.</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+    render_assistant_cards(business_insights.get("assistant_cards", []))
+
+    s1, s2, s3, s4 = st.columns(4)
+    with s1: make_mini_card("Önerilen Sipariş", money_fmt(order_budget_info["final_total"]), f"Stokun %{int(order_budget_info['budget_ratio']*100)} bütçesi", "alert-green")
+    with s2: make_mini_card("Satış Kaçırma Riski", str(len(urgent_df)), "Stokta yok ama satmış", "alert-red" if len(urgent_df) else "alert-green")
+    with s3: make_mini_card("Sessiz Kâr Kaybı", str(business_insights['summary']['silent_loss_count']), money_fmt(business_insights['summary']['silent_loss_amount']), "alert-orange" if business_insights['summary']['silent_loss_count'] else "alert-green")
+    with s4: make_mini_card("Hareketsiz Sermaye", money_fmt(business_insights['summary']['lost_candidate_value']), f"{business_insights['summary']['lost_candidate_count']} ürün", "alert-purple" if business_insights['summary']['lost_candidate_count'] else "alert-green")
+
+    c1, c2 = st.columns(2)
+    with c1:
+        st.markdown('<div class="section-title">İlk Öncelikli Siparişler</div>', unsafe_allow_html=True)
+        st.dataframe(reorder_df[product_cols].head(15), use_container_width=True, hide_index=True)
+    with c2:
+        st.markdown('<div class="section-title">Bugün Kontrol Edilecek Kâr Kayıpları</div>', unsafe_allow_html=True)
+        silent_cols = [c for c in product_cols + ["tahmini_sessiz_kayip"] if c in business_insights["silent_loss"].columns]
+        st.dataframe(business_insights["silent_loss"][silent_cols].head(15), use_container_width=True, hide_index=True)
+
+elif page == "🩺 Sağlık Karnesi":
+    st.markdown('<div class="section-title">🩺 Eczane Sağlık Karnesi</div>', unsafe_allow_html=True)
+    st.markdown(
+        f"""
+        <div class="exec-grid">
+            <div class="exec-card">
+                <div class="exec-title">Genel Puan: {score}/100 · {score_status(score)}</div>
+                <div class="exec-sub">Bu puan kârlılık, tahsilat, ürün bulunurluğu, stok verimliliği ve büyüme bileşenlerinden oluşur.</div>
+                {''.join([f'<div class="exec-list-item">{note}</div>' for note in business_insights.get('health_notes', [])])}
+            </div>
+            <div class="exec-card">
+                <div class="score-big">{score}</div>
+                <div class="exec-sub">AYÇA Sağlık Puanı</div>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+    for name, val in score_items.items():
+        st.markdown(
+            f"""
+            <div class="health-row"><div class="health-head"><span>{name}</span><span>{val}/100</span></div>
+            <div class="health-bar-bg"><div class="health-bar-fill" style="width:{val}%;"></div></div></div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    h1, h2, h3, h4 = st.columns(4)
+    with h1: make_mini_card("Ölü Stok Oranı", pct_fmt(business_insights['summary']['dead_ratio']), money_fmt(dead_df['stok_degeri'].sum()), "alert-orange" if business_insights['summary']['dead_ratio'] > .05 else "alert-green")
+    with h2: make_mini_card("Tahsilat Açığı", money_fmt(current_stats['tahsilat_acigi']), f"Ciro oranı {pct_fmt(safe_div(current_stats['tahsilat_acigi'], current_stats['ciro']))}", "alert-red" if current_stats['tahsilat_acigi'] else "alert-green")
+    with h3: make_mini_card("Kârlılık", pct_fmt(current_stats['marj']), "Brüt kâr / ciro", "alert-green" if current_stats['marj'] >= .15 else "alert-orange")
+    with h4: make_mini_card("Bütçeli Sipariş", money_fmt(order_budget_info['final_total']), f"Bütçe kullanımı {pct_fmt(order_budget_info['budget_used_ratio'])}", "alert-blue")
+
+elif page == "🏆 Taşıyan Ürünler":
+    st.markdown('<div class="section-title">🏆 Eczaneyi Taşıyan Ürünler</div>', unsafe_allow_html=True)
+    c1, c2, c3 = st.columns(3)
+    with c1: make_mini_card("Cironun %50'si", f"{len(business_insights['carrier_50'])} ürün", "Eczanenin ana motoru", "alert-green")
+    with c2: make_mini_card("Cironun %80'i", f"{len(business_insights['carrier_80'])} ürün", "A sınıfı odak alan", "alert-blue")
+    with c3: make_mini_card("Toplam Ürün", str(len(product_master)), "Ürün raporu", "alert-purple")
+    c4, c5 = st.columns(2)
+    with c4:
+        fig = px.bar(business_insights["carrier_50"].head(25), x="satis_tutari", y="urun", orientation="h", title="Cironun İlk %50'sini Taşıyan Ürünler")
+        st.plotly_chart(apply_plot_theme(fig, height=600), use_container_width=True)
+    with c5:
+        fig = px.line(business_insights["carrier_80"].head(100), x=np.arange(1, len(business_insights["carrier_80"].head(100)) + 1), y="kumulatif_ciro_payi", title="Kümülatif Ciro Payı")
+        fig.update_xaxes(title="Ürün sırası")
+        fig.update_yaxes(title="Kümülatif pay", tickformat=".0%")
+        st.plotly_chart(apply_plot_theme(fig, height=600), use_container_width=True)
+    t1, t2 = st.tabs(["%50 Ürünleri", "%80 Ürünleri"])
+    with t1: st.dataframe(business_insights["carrier_50"][[c for c in product_cols + ["kumulatif_ciro_payi"] if c in business_insights["carrier_50"].columns]], use_container_width=True, hide_index=True)
+    with t2: st.dataframe(business_insights["carrier_80"][[c for c in product_cols + ["kumulatif_ciro_payi"] if c in business_insights["carrier_80"].columns]], use_container_width=True, hide_index=True)
+
+elif page == "📉 Sessiz Kâr Kaybı":
+    st.markdown('<div class="section-title">📉 Sessiz Kâr Kaybı</div>', unsafe_allow_html=True)
+    st.caption("Çok satan/ciro yapan fakat marjı düşük kalan ürünleri yakalar. Bu ekran fiyat, iskonto, alış maliyeti ve muadil stratejisi kontrolü için kullanılır.")
+    silent_loss = business_insights["silent_loss"]
+    l1, l2, l3 = st.columns(3)
+    with l1: make_mini_card("Ürün Sayısı", str(len(silent_loss)), "Çok satan düşük marj", "alert-orange" if len(silent_loss) else "alert-green")
+    with l2: make_mini_card("Tahmini Etki", money_fmt(business_insights['summary']['silent_loss_amount']), "15% hedef marj varsayımı", "alert-red" if business_insights['summary']['silent_loss_amount'] else "alert-green")
+    with l3: make_mini_card("Kontrol Amacı", "Fiyat / İskonto", "Maliyet ve muadil kontrolü", "alert-blue")
+    if silent_loss.empty:
+        st.success("Çok satan ama belirgin düşük marjlı ürün bulunmadı.")
+    else:
+        c1, c2 = st.columns(2)
+        with c1:
+            fig = px.bar(silent_loss.head(20), x="tahmini_sessiz_kayip", y="urun", orientation="h", title="Tahmini Sessiz Kâr Kaybı")
+            st.plotly_chart(apply_plot_theme(fig, height=560), use_container_width=True)
+        with c2:
+            fig = px.scatter(silent_loss, x="satis_tutari", y="kar_marji", size="satilan_adet", hover_name="urun", title="Ciro / Marj Haritası")
+            st.plotly_chart(apply_plot_theme(fig, height=560), use_container_width=True)
+        cols = [c for c in product_cols + ["potansiyel_marj_farki", "tahmini_sessiz_kayip"] if c in silent_loss.columns]
+        st.dataframe(silent_loss[cols], use_container_width=True, hide_index=True)
 
 if page == "🏠 Sabah Ekranı":
     c1, c2 = st.columns(2)
@@ -1232,36 +1503,53 @@ if page == "🏠 Sabah Ekranı":
     st.dataframe(acil[product_cols], use_container_width=True, hide_index=True)
 
 elif page == "🛒 Sipariş Motoru":
-    st.markdown('<div class="section-title">Sipariş Tavsiye Motoru</div>', unsafe_allow_html=True)
-    c1, c2, c3, c4 = st.columns(4)
-    with c1: make_mini_card("Sipariş Ürünü", str(len(reorder_df)), "Bütçe sonrası önerilen ürün", "alert-blue")
-    with c2: make_mini_card("Bütçeli Tutar", money_fmt(reorder_df["siparis_tahmini_tutar"].sum()), f"Limit: {money_fmt(order_budget_info['budget_limit'])}", "alert-green")
-    with c3: make_mini_card("Ham Öneri", money_fmt(order_budget_info["raw_total"]), "Limit öncesi çıkan tutar", "alert-orange" if order_budget_info["was_limited"] else "alert-green")
-    with c4: make_mini_card("Kısılan Tutar", money_fmt(order_budget_info["cut_amount"]), f"Katsayı: {num_fmt(order_budget_info['scale'], 2)}", "alert-purple" if order_budget_info["was_limited"] else "alert-green")
+    st.markdown('<div class="section-title">🛒 AYÇA Sipariş Motoru</div>', unsafe_allow_html=True)
 
+    top_order_names = reorder_df.head(4)["urun"].tolist() if not reorder_df.empty else []
+    top_order_html = "".join([f"<div class='exec-list-item'>🛒 {x}</div>" for x in top_order_names]) or "<div class='exec-list-item'>✅ Acil sipariş önerisi yok.</div>"
     st.markdown(
         f"""
-        <div class="ai-card">
-            <div class="ai-title">🧠 Bütçe Kontrollü Sipariş Mantığı</div>
-            <div class="ai-text">
-            AYÇA önce normal sipariş ihtiyacını hesaplar. Sonra toplam öneriyi mevcut stok değerinin <b>%{int(order_budget_info['budget_ratio']*100)}</b>'si ile sınırlar.
-            Bu eczanede stok değeri <b>{money_fmt(order_budget_info['stock_value'])}</b>, sipariş bütçesi <b>{money_fmt(order_budget_info['budget_limit'])}</b>.
-            Ham öneri <b>{money_fmt(order_budget_info['raw_total'])}</b> olduğu için öneriler öncelik sırası bozulmadan orantılı küçültülür.
+        <div class="exec-grid">
+            <div class="exec-card">
+                <div class="exec-title">🤖 AYÇA Öneriyor</div>
+                <div class="exec-sub">Teknik ham öneri yerine eczacının uygulanabilir sipariş listesi gösterilir.</div>
+                <div class="exec-list-item">📦 Mevcut stok değeri: <b>{money_fmt(order_budget_info['stock_value'])}</b></div>
+                <div class="exec-list-item">🎯 Bu dönem önerilen sipariş: <b>{money_fmt(order_budget_info['final_total'])}</b> · stokun <b>%{int(order_budget_info['budget_ratio']*100)}</b>'si</div>
+                <div class="exec-list-item">🚨 Sipariş bekleyen kritik ürün: <b>{len(reorder_df)}</b></div>
+                {top_order_html}
+            </div>
+            <div class="exec-card">
+                <div class="exec-sub">Sipariş Bütçesi Kullanımı</div>
+                <div class="score-big">{pct_fmt(order_budget_info['budget_used_ratio'])}</div>
+                <div class="exec-sub">Bütçe: <b>{money_fmt(order_budget_info['budget_limit'])}</b> · Öneri: <b>{money_fmt(order_budget_info['final_total'])}</b></div>
+                <div class="health-bar-bg"><div class="health-bar-fill" style="width:{min(100, max(0, order_budget_info['budget_used_ratio']*100))}%;"></div></div>
+                <div class="exec-list-item">Limit öncesi hesap teknik detaydır; ana ekranda sadece uygulanabilir öneri gösterilir.</div>
             </div>
         </div>
         """,
         unsafe_allow_html=True,
     )
 
+    c1, c2, c3 = st.columns(3)
+    with c1: make_mini_card("Sipariş Ürünü", str(len(reorder_df)), "Bütçe sonrası önerilen ürün", "alert-blue")
+    with c2: make_mini_card("Önerilen Tutar", money_fmt(reorder_df["siparis_tahmini_tutar"].sum()), "Uygulanabilir liste", "alert-green")
+    with c3: make_mini_card("Acil Stok Riski", str(len(urgent_df)), "Satılmış ama stok 0/eksi", "alert-red" if len(urgent_df) else "alert-green")
+
     c5, c6 = st.columns(2)
     with c5:
         fig = px.bar(reorder_df.head(20), x="siparis_tahmini_tutar", y="urun", orientation="h", title="İlk 20 Bütçeli Sipariş Önerisi")
         st.plotly_chart(apply_plot_theme(fig, height=560), use_container_width=True)
     with c6:
-        fig = px.scatter(product_master[product_master["satilan_adet"] > 0], x="stok_bitis_gunu_goster", y="kar_tutari", size="satilan_adet", hover_name="urun", title="Stok Bitiş Günü / Kâr")
-        st.plotly_chart(apply_plot_theme(fig, height=560), use_container_width=True)
+        critical_matrix = reorder_df[["urun", "stok", "satilan_adet", "stok_bitis_gunu_goster", "kar_tutari", "siparis_onerisi", "siparis_tahmini_tutar", "aksiyon"]].head(15).copy()
+        st.markdown('<div class="section-title">🚨 Kritik Ürün Matrisi</div>', unsafe_allow_html=True)
+        st.dataframe(critical_matrix, use_container_width=True, hide_index=True)
 
-    t1, t2, t3, t4 = st.tabs(["Bütçeli Sipariş Listesi", "Ham Öneri Karşılaştırma", "Stokta Yok Satmış", "Hızlı Tükenen"])
+    with st.expander("Teknik sipariş detayı"):
+        st.write(f"Ham öneri: {money_fmt(order_budget_info['raw_total'])}")
+        st.write(f"Kısılan tutar: {money_fmt(order_budget_info['cut_amount'])}")
+        st.write(f"Orantı katsayısı: {num_fmt(order_budget_info['scale'], 2)}")
+
+    t1, t2, t3, t4 = st.tabs(["Bütçeli Sipariş Listesi", "Teknik Karşılaştırma", "Stokta Yok Satmış", "Hızlı Tükenen"])
     with t1: st.dataframe(reorder_df[product_cols], use_container_width=True, hide_index=True)
     with t2:
         compare_cols = ["barkod", "urun", "stok", "satilan_adet", "stok_bitis_gunu_goster", "siparis_onerisi_ham", "siparis_tahmini_tutar_ham", "siparis_onerisi", "siparis_tahmini_tutar", "siparis_kisit_katsayisi", "aksiyon"]
@@ -1458,32 +1746,54 @@ elif page == "🧑‍🤝‍🧑 Hasta Sadakat":
             unsafe_allow_html=True,
         )
 
-elif page == "🏥 Kurum & Doktor":
-    st.markdown('<div class="section-title">Kurum ve Doktor Performansı</div>', unsafe_allow_html=True)
-    c1, c2 = st.columns(2)
-    with c1:
-        fig = px.bar(kurum_df.head(12), x="ciro", y="kurum", orientation="h", title="İlk 12 Kurum - Ciro")
-        st.plotly_chart(apply_plot_theme(fig, height=460), use_container_width=True)
-    with c2:
-        top_doc_df = doktor_df[doktor_df["doktor"].str.lower() != "nan"].head(12).copy()
-        fig = px.bar(top_doc_df, x="ciro", y="doktor", orientation="h", title="İlk 12 Doktor - Ciro")
-        st.plotly_chart(apply_plot_theme(fig, height=460), use_container_width=True)
+elif page == "🏥 Kurum Intelligence":
+    st.markdown('<div class="section-title">🏥 Kurum Intelligence</div>', unsafe_allow_html=True)
+    st.caption("Bu ekran doktor ekranından ayrıldı. Kurum tarafında finansal performans, tahsilat açığı ve marj odağı gösterilir.")
 
-    t1, t2 = st.tabs(["Kurum Detayı", "Doktor Detayı"])
-    with t1: st.dataframe(kurum_df, use_container_width=True, hide_index=True)
-    with t2: st.dataframe(doktor_df, use_container_width=True, hide_index=True)
+    if kurum_df.empty:
+        st.info("Kurum analizi için satış hareketleri dosyasında kurum bilgisi bulunamadı.")
+    else:
+        k_top = kurum_df.sort_values("ciro", ascending=False).iloc[0]
+        k_gap = kurum_df.sort_values("tahsilat_acigi", ascending=False).iloc[0]
+        k_marj = kurum_df[kurum_df["ciro"] > 0].sort_values("marj", ascending=False).iloc[0] if not kurum_df[kurum_df["ciro"] > 0].empty else k_top
+        c1, c2, c3, c4 = st.columns(4)
+        with c1: make_mini_card("Kurum Sayısı", str(kurum_df["kurum"].nunique()), "Seçili dönem", "alert-blue")
+        with c2: make_mini_card("En Büyük Kurum", str(k_top["kurum"]), money_fmt(k_top["ciro"]), "alert-green")
+        with c3: make_mini_card("Tahsilat Riski", str(k_gap["kurum"]), money_fmt(k_gap["tahsilat_acigi"]), "alert-red" if k_gap["tahsilat_acigi"] > 0 else "alert-green")
+        with c4: make_mini_card("En Yüksek Marj", str(k_marj["kurum"]), pct_fmt(k_marj["marj"]), "alert-purple")
+
+        c5, c6 = st.columns(2)
+        with c5:
+            fig = px.bar(kurum_df.head(15), x="ciro", y="kurum", orientation="h", title="Kurum Bazlı Ciro")
+            st.plotly_chart(apply_plot_theme(fig, height=520), use_container_width=True)
+        with c6:
+            gap_df = kurum_df.sort_values("tahsilat_acigi", ascending=False).head(15)
+            fig = px.bar(gap_df, x="tahsilat_acigi", y="kurum", orientation="h", title="Kurum Bazlı Tahsilat Açığı")
+            st.plotly_chart(apply_plot_theme(fig, height=520), use_container_width=True)
+
+        c7, c8 = st.columns(2)
+        with c7:
+            margin_df = kurum_df[kurum_df["ciro"] > 0].sort_values("marj", ascending=False).head(15)
+            fig = px.bar(margin_df, x="marj", y="kurum", orientation="h", title="Kurum Bazlı Marj")
+            st.plotly_chart(apply_plot_theme(fig, height=520), use_container_width=True)
+        with c8:
+            fig = px.scatter(kurum_df, x="ciro", y="kar", size="islem", hover_name="kurum", title="Kurum Ciro / Kâr Haritası")
+            st.plotly_chart(apply_plot_theme(fig, height=520), use_container_width=True)
+
+        st.markdown('<div class="section-title">Kurum Detay Tablosu</div>', unsafe_allow_html=True)
+        st.dataframe(kurum_df, use_container_width=True, hide_index=True)
 
 elif page == "📥 Rapor":
     st.markdown('<div class="section-title">Excel Raporu</div>', unsafe_allow_html=True)
     report = create_excel_report(
         product_master, sales_df, period_df, kurum_df, doktor_df, daily_df, weekday_df, hourly_df,
         doctor_intel.get("doctor_kpi"), doctor_intel.get("doctor_products"),
-        patient_loyalty.get("frequency"), patient_loyalty.get("lost")
+        patient_loyalty.get("frequency"), patient_loyalty.get("lost"), business_insights
     )
     st.download_button(
-        "📥 AYÇA Insight V7.3 Raporunu İndir",
+        "📥 AYÇA Insight V8.0 Raporunu İndir",
         data=report,
-        file_name=f"ayca_insight_v7_2_rapor_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx",
+        file_name=f"ayca_insight_v8_0_rapor_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         use_container_width=True,
     )
