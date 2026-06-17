@@ -794,7 +794,9 @@ def apply_order_budget(product_master: pd.DataFrame, order_budget_ratio: float) 
     critical_min_mask = (raw_qty > 0) & (scaled_qty < 1) & (df["stokta_yok_satmis_mi"] | df["hizli_tukeniyor_mu"] | df["kritik_mi"])
     scaled_qty = np.where(critical_min_mask, 1, scaled_qty)
 
-    df["siparis_onerisi"] = pd.to_numeric(scaled_qty, errors="coerce").fillna(0).round(0)
+    # scaled_qty np.ndarray dönebilir; Series'e çevirmezsek .fillna() hatası oluşur.
+    df["siparis_onerisi"] = pd.Series(scaled_qty, index=df.index)
+    df["siparis_onerisi"] = pd.to_numeric(df["siparis_onerisi"], errors="coerce").fillna(0).round(0)
     df["siparis_tahmini_tutar"] = df["siparis_onerisi"] * pd.to_numeric(df["birim_satis"], errors="coerce").fillna(0)
     df["siparis_gerekli_mi"] = df["siparis_onerisi"] > 0
 
@@ -825,7 +827,8 @@ def apply_order_budget(product_master: pd.DataFrame, order_budget_ratio: float) 
                 max_qty = np.floor(remaining / unit)
                 keep_qty.append(max_qty)
                 running += max_qty * unit
-        df["siparis_onerisi"] = keep_qty
+        df["siparis_onerisi"] = pd.Series(keep_qty, index=df.index)
+        df["siparis_onerisi"] = pd.to_numeric(df["siparis_onerisi"], errors="coerce").fillna(0).round(0)
         df["siparis_tahmini_tutar"] = df["siparis_onerisi"] * pd.to_numeric(df["birim_satis"], errors="coerce").fillna(0)
         df["siparis_gerekli_mi"] = df["siparis_onerisi"] > 0
 
