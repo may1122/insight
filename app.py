@@ -1,5 +1,5 @@
 # ============================================================
-# AYÇA Insight V7.2 - Ürün Zekası + Doktor Intelligence + Hasta Sadakat Sürümü
+# AYÇA Insight V7.3 - Ürün Zekası + Doktor Intelligence + Hasta Sadakat Sürümü
 # ------------------------------------------------------------
 # Zorunlu / Önerilen dosyalar:
 # 1) Envanter Exceli
@@ -43,7 +43,7 @@ import streamlit as st
 # STREAMLIT AYARI
 # ============================================================
 st.set_page_config(
-    page_title="AYÇA Insight V7.2",
+    page_title="AYÇA Insight V7.3",
     page_icon="💊",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -148,7 +148,7 @@ def show_demo_auth_screen():
         st.markdown(
             """
             <div class="ai-card">
-                <div class="ai-title">AYÇA Insight V7.2</div>
+                <div class="ai-title">AYÇA Insight V7.3</div>
                 <div class="ai-text">
                 Bu sürüm üç TEBEOS Excel çıktısını birlikte okur: <b>Envanter</b>, <b>Ürün Bazında Toplamlar</b> ve <b>Satış Hareketleri</b>.
                 Böylece ürün bazlı satış hızı, stok bitiş günü, sipariş tavsiyesi, ölü stok ve kârlılık motoru aktif olur.
@@ -576,8 +576,15 @@ def make_product_master(inv_df: pd.DataFrame, prod_df: pd.DataFrame, analysis_da
     master["stok_bitis_gunu"] = np.where(master["gunluk_satis_hizi"] > 0, master["stok"] / master["gunluk_satis_hizi"], np.inf)
     master["stok_bitis_gunu_goster"] = master["stok_bitis_gunu"].replace(np.inf, np.nan)
     master["hedef_stok"] = np.ceil(master["gunluk_satis_hizi"] * (target_days + safety_days))
-    master["siparis_onerisi"] = np.maximum(0, master["hedef_stok"] - master["stok"]).round(0)
-    master["siparis_tahmini_tutar"] = master["siparis_onerisi"] * master["birim_satis"].fillna(0)
+    master["siparis_onerisi_ham"] = np.maximum(0, master["hedef_stok"] - master["stok"]).round(0)
+    master["siparis_tahmini_tutar_ham"] = master["siparis_onerisi_ham"] * master["birim_satis"].fillna(0)
+
+    # Varsayılan final öneri, bütçe kontrolünden önce ham öneriye eşittir.
+    # Aşağıda apply_order_budget() ile mevcut stok değerinin belirli oranına göre orantılı küçültülür.
+    master["siparis_onerisi"] = master["siparis_onerisi_ham"].copy()
+    master["siparis_tahmini_tutar"] = master["siparis_tahmini_tutar_ham"].copy()
+    master["siparis_kisit_katsayisi"] = 1.0
+    master["siparis_butce_kisildi_mi"] = False
     master["kritik_mi"] = np.where(master["kritik_stok"] > 0, master["stok"] <= master["kritik_stok"], master["stok"] <= 1)
     master["stok_yok_mu"] = master["stok"] <= 0
     master["hizli_tukeniyor_mu"] = (master["stok_bitis_gunu"] <= 14) & (master["satilan_adet"] > 0)
@@ -761,6 +768,101 @@ def build_doctor_intelligence(period_df: pd.DataFrame, all_sales_df: pd.DataFram
         "doctor_product_note": product_note,
     }
 
+
+def apply_order_budget(product_master: pd.DataFrame, order_budget_ratio: float) -> tuple[pd.DataFrame, dict]:
+    """Sipariş önerisini mevcut stok değerinin seçilen oranına göre gerçekçi bütçeye indirir.
+
+    Örnek: stok değeri 1.400.000 TL ve oran %20 ise maksimum sipariş bütçesi 280.000 TL olur.
+    Ham öneri 1.200.000 TL ise tüm öneriler öncelik sırası bozulmadan 280/1200 oranında küçültülür.
+    """
+    df = product_master.copy()
+    total_stock_value = float(pd.to_numeric(df.get("stok_degeri", 0), errors="coerce").fillna(0).sum())
+    raw_total = float(pd.to_numeric(df.get("siparis_tahmini_tutar_ham", df.get("siparis_tahmini_tutar", 0)), errors="coerce").fillna(0).sum())
+    budget_limit = max(0.0, total_stock_value * float(order_budget_ratio))
+
+    if raw_total <= 0 or budget_limit <= 0:
+        scale = 0.0 if raw_total > 0 else 1.0
+    else:
+        scale = min(1.0, budget_limit / raw_total)
+
+    df["siparis_kisit_katsayisi"] = scale
+    df["siparis_butce_kisildi_mi"] = scale < 0.999
+
+    # Orantılı küçültme: adetler aşağı yuvarlanır. Çok kritik ve 0'a düşen ürünler için 1 adetlik minimum korunur.
+    raw_qty = pd.to_numeric(df["siparis_onerisi_ham"], errors="coerce").fillna(0)
+    scaled_qty = np.floor(raw_qty * scale)
+    critical_min_mask = (raw_qty > 0) & (scaled_qty < 1) & (df["stokta_yok_satmis_mi"] | df["hizli_tukeniyor_mu"] | df["kritik_mi"])
+    scaled_qty = np.where(critical_min_mask, 1, scaled_qty)
+
+    df["siparis_onerisi"] = pd.to_numeric(scaled_qty, errors="coerce").fillna(0).round(0)
+    df["siparis_tahmini_tutar"] = df["siparis_onerisi"] * pd.to_numeric(df["birim_satis"], errors="coerce").fillna(0)
+    df["siparis_gerekli_mi"] = df["siparis_onerisi"] > 0
+
+    # Yuvarlama/minimum 1 adet sebebiyle bütçe az aşılırsa en düşük öncelikli ürünlerden kırp.
+    final_total = float(df["siparis_tahmini_tutar"].sum())
+    if budget_limit > 0 and final_total > budget_limit:
+        df = df.sort_values(
+            ["stokta_yok_satmis_mi", "hizli_tukeniyor_mu", "kritik_mi", "satis_tutari", "kar_tutari"],
+            ascending=[False, False, False, False, False],
+        ).copy()
+        running = 0.0
+        keep_qty = []
+        for _, row in df.iterrows():
+            amount = float(row.get("siparis_tahmini_tutar", 0) or 0)
+            qty = float(row.get("siparis_onerisi", 0) or 0)
+            unit = float(row.get("birim_satis", 0) or 0)
+            if qty <= 0 or unit <= 0:
+                keep_qty.append(0)
+                continue
+            remaining = budget_limit - running
+            if remaining <= 0:
+                keep_qty.append(0)
+                continue
+            if amount <= remaining:
+                keep_qty.append(qty)
+                running += amount
+            else:
+                max_qty = np.floor(remaining / unit)
+                keep_qty.append(max_qty)
+                running += max_qty * unit
+        df["siparis_onerisi"] = keep_qty
+        df["siparis_tahmini_tutar"] = df["siparis_onerisi"] * pd.to_numeric(df["birim_satis"], errors="coerce").fillna(0)
+        df["siparis_gerekli_mi"] = df["siparis_onerisi"] > 0
+
+    # Aksiyon metnini final öneriye göre yeniden yaz.
+    df["aksiyon"] = np.select(
+        [
+            df["stokta_yok_satmis_mi"],
+            df["hizli_tukeniyor_mu"] & df["siparis_gerekli_mi"],
+            df["olu_stok_mu"],
+            df["yavas_stok_mu"],
+            df["sermaye_riski_mi"],
+        ],
+        [
+            "Acil sipariş / satış kaçırma riski",
+            "Bütçeli sipariş öner",
+            "Ölü stok - aksiyon al",
+            "Yavaş stok - kampanya / raf kontrolü",
+            "Sermaye riski - stok azalt",
+        ],
+        default="Normal takip",
+    )
+
+    final_total = float(df["siparis_tahmini_tutar"].sum())
+    info = {
+        "stock_value": total_stock_value,
+        "budget_ratio": float(order_budget_ratio),
+        "budget_limit": budget_limit,
+        "raw_total": raw_total,
+        "final_total": final_total,
+        "scale": scale,
+        "cut_amount": max(0.0, raw_total - final_total),
+        "budget_used_ratio": safe_div(final_total, budget_limit),
+        "was_limited": raw_total > budget_limit > 0,
+    }
+    return df.sort_values(["satis_tutari", "satilan_adet"], ascending=False), info
+
+
 def create_action_items(product_master, current_stats, previous_stats, daily_df):
     actions = []
     urgent = product_master[product_master["stokta_yok_satmis_mi"]].sort_values("satis_tutari", ascending=False)
@@ -880,7 +982,7 @@ if st.sidebar.button("Çıkış Yap", use_container_width=True):
     safe_rerun()
 
 st.sidebar.title("💊 AYÇA Insight")
-st.sidebar.caption("V7.2 · Ürün + Doktor + Hasta Zekası")
+st.sidebar.caption("V7.3 · Bütçe Kontrollü Sipariş + Ürün/Doktor/Hasta Zekası")
 eczane_adi = st.sidebar.text_input("Eczane Adı", value="İdil Eczanesi")
 kullanici_adi = st.sidebar.text_input("Kullanıcı", value="Abdullah Bey")
 
@@ -892,6 +994,20 @@ st.sidebar.markdown("---")
 selected_period = st.sidebar.selectbox("Satış hareket dönemi", ["Son 7 gün", "Son 14 gün", "Son 30 gün", "Tüm veri"], index=2)
 target_days = st.sidebar.slider("Sipariş hedef stok günü", 7, 90, 30)
 safety_days = st.sidebar.slider("Güvenlik stok günü", 0, 30, 7)
+order_policy = st.sidebar.selectbox(
+    "Sipariş bütçe politikası",
+    ["Konservatif (%10)", "Dengeli (%20)", "Agresif (%30)", "Özel oran"],
+    index=1,
+    help="AYÇA, toplam sipariş önerisini mevcut stok değerinin seçilen oranıyla sınırlar."
+)
+if order_policy == "Konservatif (%10)":
+    order_budget_ratio = 0.10
+elif order_policy == "Dengeli (%20)":
+    order_budget_ratio = 0.20
+elif order_policy == "Agresif (%30)":
+    order_budget_ratio = 0.30
+else:
+    order_budget_ratio = st.sidebar.slider("Özel sipariş bütçe oranı", 1, 60, 20) / 100
 manual_days = st.sidebar.number_input("Ürün raporu kaç günü kapsıyor?", min_value=1, max_value=365, value=30, step=1)
 use_sales_date_span = st.sidebar.checkbox("Gün hesabında satış hareket tarih aralığını kullan", value=True)
 show_patient_columns = st.sidebar.checkbox("Hasta isim kolonunu göster", value=False)
@@ -907,7 +1023,7 @@ if inventory_file is None or product_file is None or sales_file is None:
         f"""
         <div class="ayca-header">
             <div class="ayca-title">
-                <h1>AYÇA Insight V7.2</h1>
+                <h1>AYÇA Insight V7.3</h1>
                 <p>{eczane_adi} · Üç Excel dosyasını yükle: envanter, ürün bazında toplamlar, satış hareketleri.</p>
             </div>
             <div class="header-pill">Dosya bekleniyor</div>
@@ -961,6 +1077,7 @@ analysis_days = period_days if use_sales_date_span else int(manual_days)
 analysis_days = max(1, int(analysis_days))
 
 product_master = make_product_master(inventory_df, product_df, analysis_days, target_days, safety_days)
+product_master, order_budget_info = apply_order_budget(product_master, order_budget_ratio)
 current_stats = summarize_sales(period_df)
 previous_stats = summarize_sales(prev_df)
 score, score_items, score_weights = health_score(product_master, current_stats, previous_stats)
@@ -1017,7 +1134,7 @@ st.markdown(
     f"""
     <div class="ayca-header">
         <div class="ayca-title">
-            <h1>AYÇA Insight V7.2</h1>
+            <h1>AYÇA Insight V7.3</h1>
             <p>{eczane_adi} · {selected_period} · Gün hesabı: {analysis_days} gün · {today_str}</p>
         </div>
         <div class="header-pill">AYÇA Ürün Puanı: {score}/100 · {score_status(score)}</div>
@@ -1035,7 +1152,7 @@ with k1: make_metric_card("Ciro", money_fmt(current_stats["ciro"]), selected_per
 with k2: make_metric_card("Brüt Kâr", money_fmt(current_stats["kar"]), "Satış hareketleri", profit_trend, profit_class)
 with k3: make_metric_card("Ürün Satış Tutarı", money_fmt(product_master["satis_tutari"].sum()), f"{num_fmt(product_master['satilan_adet'].sum(),0)} adet")
 with k4: make_metric_card("Stok Değeri", money_fmt(product_master["stok_degeri"].sum()), "Envanter + ürün raporu")
-with k5: make_metric_card("Sipariş Önerisi", money_fmt(reorder_df["siparis_tahmini_tutar"].sum()), f"{len(reorder_df)} ürün")
+with k5: make_metric_card("Bütçeli Sipariş", money_fmt(reorder_df["siparis_tahmini_tutar"].sum()), f"Limit: {money_fmt(order_budget_info['budget_limit'])} · {len(reorder_df)} ürün")
 
 r1, r2, r3, r4, r5 = st.columns(5)
 with r1: make_mini_card("Barkod Eşleşme", pct_fmt(match_ratio), f"{matched_count} / {len(product_barcodes)} ürün", "alert-green" if match_ratio >= .70 else "alert-orange")
@@ -1043,6 +1160,12 @@ with r2: make_mini_card("Stokta Yok Satmış", str(len(urgent_df)), "Satılmış
 with r3: make_mini_card("Ölü Stok", str(len(dead_df)), money_fmt(dead_df["stok_degeri"].sum()), "alert-orange" if len(dead_df) else "alert-green")
 with r4: make_mini_card("Yavaş Stok", str(len(slow_df)), money_fmt(slow_df["stok_degeri"].sum()), "alert-purple" if len(slow_df) else "alert-green")
 with r5: make_mini_card("Tahsilat Açığı", money_fmt(current_stats["tahsilat_acigi"]), f"Oran {pct_fmt(safe_div(current_stats['tahsilat_acigi'], current_stats['ciro']))}", "alert-red" if current_stats["tahsilat_acigi"] > 0 else "alert-green")
+
+b1, b2, b3, b4 = st.columns(4)
+with b1: make_mini_card("Sipariş Politikası", f"%{int(order_budget_info['budget_ratio']*100)}", "Mevcut stok değerine göre", "alert-blue")
+with b2: make_mini_card("Sipariş Bütçesi", money_fmt(order_budget_info["budget_limit"]), "Stok değerinin seçilen oranı", "alert-green")
+with b3: make_mini_card("Ham Öneri", money_fmt(order_budget_info["raw_total"]), "Limit öncesi algoritma çıktısı", "alert-orange" if order_budget_info["was_limited"] else "alert-green")
+with b4: make_mini_card("Kısılmış Öneri", money_fmt(order_budget_info["final_total"]), f"Kullanım: {pct_fmt(order_budget_info['budget_used_ratio'])}", "alert-purple")
 
 health_html = "".join([
     f'<div class="health-row"><div class="health-head"><span>{k} <small>({score_weights[k]}%)</small></span><span>{v}/100</span></div><div class="health-bar-bg"><div class="health-bar-fill" style="width:{v}%;"></div></div></div>'
@@ -1079,7 +1202,7 @@ page = st.radio("Bölüm", pages, horizontal=True, label_visibility="collapsed")
 product_cols = [
     "barkod", "urun", "urun_grubu", "raf", "stok", "kritik_stok", "psf_final", "stok_degeri",
     "satilan_adet", "satis_tutari", "kar_tutari", "kar_marji", "gunluk_satis_hizi", "stok_bitis_gunu_goster",
-    "siparis_onerisi", "siparis_tahmini_tutar", "abc_sinif", "aksiyon"
+    "siparis_onerisi_ham", "siparis_tahmini_tutar_ham", "siparis_onerisi", "siparis_tahmini_tutar", "siparis_kisit_katsayisi", "abc_sinif", "aksiyon"
 ]
 
 if page == "🏠 Sabah Ekranı":
@@ -1094,7 +1217,7 @@ if page == "🏠 Sabah Ekranı":
     with c2:
         st.markdown('<div class="section-title">En Kritik Siparişler</div>', unsafe_allow_html=True)
         top_reorder = reorder_df.head(12).copy()
-        fig = px.bar(top_reorder, x="siparis_tahmini_tutar", y="urun", orientation="h", title="Tutar Bazlı İlk Sipariş Önerileri")
+        fig = px.bar(top_reorder, x="siparis_tahmini_tutar", y="urun", orientation="h", title="Tutar Bazlı İlk Bütçeli Sipariş Önerileri")
         st.plotly_chart(apply_plot_theme(fig), use_container_width=True)
 
     st.markdown('<div class="section-title">Bugünün Aksiyon Listesi</div>', unsafe_allow_html=True)
@@ -1108,23 +1231,40 @@ if page == "🏠 Sabah Ekranı":
 elif page == "🛒 Sipariş Motoru":
     st.markdown('<div class="section-title">Sipariş Tavsiye Motoru</div>', unsafe_allow_html=True)
     c1, c2, c3, c4 = st.columns(4)
-    with c1: make_mini_card("Sipariş Ürünü", str(len(reorder_df)), "Önerilen ürün sayısı", "alert-blue")
-    with c2: make_mini_card("Tahmini Tutar", money_fmt(reorder_df["siparis_tahmini_tutar"].sum()), "PSF/birim satışa göre", "alert-green")
-    with c3: make_mini_card("Acil Stok Yok", str(len(urgent_df)), "Satılmış ama stok yok", "alert-red" if len(urgent_df) else "alert-green")
-    with c4: make_mini_card("14 Gün Altı", str(len(fast_df)), "Hızlı tükenen stok", "alert-orange" if len(fast_df) else "alert-green")
+    with c1: make_mini_card("Sipariş Ürünü", str(len(reorder_df)), "Bütçe sonrası önerilen ürün", "alert-blue")
+    with c2: make_mini_card("Bütçeli Tutar", money_fmt(reorder_df["siparis_tahmini_tutar"].sum()), f"Limit: {money_fmt(order_budget_info['budget_limit'])}", "alert-green")
+    with c3: make_mini_card("Ham Öneri", money_fmt(order_budget_info["raw_total"]), "Limit öncesi çıkan tutar", "alert-orange" if order_budget_info["was_limited"] else "alert-green")
+    with c4: make_mini_card("Kısılan Tutar", money_fmt(order_budget_info["cut_amount"]), f"Katsayı: {num_fmt(order_budget_info['scale'], 2)}", "alert-purple" if order_budget_info["was_limited"] else "alert-green")
+
+    st.markdown(
+        f"""
+        <div class="ai-card">
+            <div class="ai-title">🧠 Bütçe Kontrollü Sipariş Mantığı</div>
+            <div class="ai-text">
+            AYÇA önce normal sipariş ihtiyacını hesaplar. Sonra toplam öneriyi mevcut stok değerinin <b>%{int(order_budget_info['budget_ratio']*100)}</b>'si ile sınırlar.
+            Bu eczanede stok değeri <b>{money_fmt(order_budget_info['stock_value'])}</b>, sipariş bütçesi <b>{money_fmt(order_budget_info['budget_limit'])}</b>.
+            Ham öneri <b>{money_fmt(order_budget_info['raw_total'])}</b> olduğu için öneriler öncelik sırası bozulmadan orantılı küçültülür.
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
     c5, c6 = st.columns(2)
     with c5:
-        fig = px.bar(reorder_df.head(20), x="siparis_tahmini_tutar", y="urun", orientation="h", title="İlk 20 Sipariş Önerisi")
+        fig = px.bar(reorder_df.head(20), x="siparis_tahmini_tutar", y="urun", orientation="h", title="İlk 20 Bütçeli Sipariş Önerisi")
         st.plotly_chart(apply_plot_theme(fig, height=560), use_container_width=True)
     with c6:
         fig = px.scatter(product_master[product_master["satilan_adet"] > 0], x="stok_bitis_gunu_goster", y="kar_tutari", size="satilan_adet", hover_name="urun", title="Stok Bitiş Günü / Kâr")
         st.plotly_chart(apply_plot_theme(fig, height=560), use_container_width=True)
 
-    t1, t2, t3 = st.tabs(["Sipariş Listesi", "Stokta Yok Satmış", "Hızlı Tükenen"])
+    t1, t2, t3, t4 = st.tabs(["Bütçeli Sipariş Listesi", "Ham Öneri Karşılaştırma", "Stokta Yok Satmış", "Hızlı Tükenen"])
     with t1: st.dataframe(reorder_df[product_cols], use_container_width=True, hide_index=True)
-    with t2: st.dataframe(urgent_df[product_cols], use_container_width=True, hide_index=True)
-    with t3: st.dataframe(fast_df[product_cols], use_container_width=True, hide_index=True)
+    with t2:
+        compare_cols = ["barkod", "urun", "stok", "satilan_adet", "stok_bitis_gunu_goster", "siparis_onerisi_ham", "siparis_tahmini_tutar_ham", "siparis_onerisi", "siparis_tahmini_tutar", "siparis_kisit_katsayisi", "aksiyon"]
+        st.dataframe(product_master[product_master["siparis_onerisi_ham"] > 0][compare_cols].sort_values("siparis_tahmini_tutar_ham", ascending=False), use_container_width=True, hide_index=True)
+    with t3: st.dataframe(urgent_df[product_cols], use_container_width=True, hide_index=True)
+    with t4: st.dataframe(fast_df[product_cols], use_container_width=True, hide_index=True)
 
 elif page == "📦 Ürün Zekası":
     st.markdown('<div class="section-title">Ürün Performans Merkezi</div>', unsafe_allow_html=True)
@@ -1338,7 +1478,7 @@ elif page == "📥 Rapor":
         patient_loyalty.get("frequency"), patient_loyalty.get("lost")
     )
     st.download_button(
-        "📥 AYÇA Insight V7.2 Raporunu İndir",
+        "📥 AYÇA Insight V7.3 Raporunu İndir",
         data=report,
         file_name=f"ayca_insight_v7_2_rapor_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
