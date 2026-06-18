@@ -1,5 +1,5 @@
 # ============================================================
-# AYÇA Insight V9.3 KKİ Risk Merkezi - Kontrol Merkezi + Asistan + Ürün Fırsatları
+# AYÇA Insight V10.0 2026 SaaS - Sabah Brifingi + Risk Copilot
 # ------------------------------------------------------------
 # Zorunlu / Önerilen dosyalar:
 # 1) Envanter Exceli
@@ -43,7 +43,7 @@ import streamlit as st
 # STREAMLIT AYARI
 # ============================================================
 st.set_page_config(
-    page_title="AYÇA Insight V9.3 KKİ Risk Merkezi",
+    page_title="AYÇA Insight V10.0 SaaS",
     page_icon="💊",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -115,6 +115,47 @@ st.markdown(
     .module-desc {font-size:13px; color:#64748B; line-height:1.55;}
     @media (max-width:1000px){.saas-grid{grid-template-columns:repeat(2,minmax(0,1fr));}.module-grid{grid-template-columns:1fr;}}
     @media (max-width:1000px){.exec-grid{grid-template-columns:1fr;}.ayca-header{display:block}.header-pill{display:inline-block;margin-top:10px}}
+
+
+    /* =====================================================
+       AYÇA V10 - 2026 SaaS Sabah Brifingi UI
+       Shopify + Stripe + Linear + Notion etkisi
+       ===================================================== */
+    .v10-hero {background:linear-gradient(135deg,#0F172A 0%,#172554 45%,#1D4ED8 100%);border-radius:32px;padding:26px;box-shadow:0 26px 70px rgba(37,99,235,.22);color:white;margin:14px 0 18px 0;position:relative;overflow:hidden;}
+    .v10-hero:after {content:"";position:absolute;right:-130px;top:-120px;width:360px;height:360px;border-radius:999px;background:radial-gradient(circle,rgba(255,255,255,.20),rgba(255,255,255,0));}
+    .v10-eyebrow {display:inline-block;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.22);border-radius:999px;padding:7px 12px;font-size:12px;font-weight:950;color:#DBEAFE;margin-bottom:12px;}
+    .v10-title {font-size:32px;font-weight:950;letter-spacing:-.8px;color:white;margin-bottom:8px;}
+    .v10-sub {font-size:14px;line-height:1.62;color:#DBEAFE;max-width:980px;}
+    .v10-hero-grid {display:grid;grid-template-columns:1.2fr .8fr;gap:16px;margin-top:18px;position:relative;z-index:1;}
+    .v10-score-card {background:rgba(255,255,255,.94);border:1px solid rgba(255,255,255,.55);border-radius:26px;padding:20px;color:#0F172A;box-shadow:0 18px 46px rgba(15,23,42,.16);}
+    .v10-score-label {font-size:12px;color:#64748B;font-weight:950;text-transform:uppercase;letter-spacing:.5px;}
+    .v10-score-number {font-size:72px;line-height:1;font-weight:950;letter-spacing:-3px;color:#2563EB;margin:8px 0 4px 0;}
+    .v10-score-note {font-size:13px;color:#64748B;line-height:1.45;}
+    .v10-brief-list {display:grid;gap:10px;}
+    .v10-brief-item {background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.20);border-radius:18px;padding:13px 14px;color:white;font-size:14px;font-weight:850;line-height:1.45;backdrop-filter:blur(10px);}
+    .v10-grid {display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin:14px 0 18px 0;}
+    .v10-card {background:#FFFFFF;border:1px solid #E2E8F0;border-radius:24px;padding:18px;box-shadow:0 14px 34px rgba(15,23,42,.055);min-height:138px;position:relative;overflow:hidden;}
+    .v10-card:after {content:"";position:absolute;right:-45px;bottom:-45px;width:125px;height:125px;border-radius:999px;background:radial-gradient(circle,rgba(37,99,235,.12),rgba(37,99,235,0));}
+    .v10-card-k {font-size:12px;color:#64748B;font-weight:950;text-transform:uppercase;letter-spacing:.45px;margin-bottom:10px;}
+    .v10-card-v {font-size:28px;color:#0F172A;font-weight:950;letter-spacing:-.5px;margin-bottom:6px;}
+    .v10-card-n {font-size:13px;color:#64748B;line-height:1.45;}
+    .v10-action-grid {display:grid;grid-template-columns:1.05fr .95fr;gap:16px;margin:16px 0 18px 0;}
+    .v10-panel {background:#FFFFFF;border:1px solid #E2E8F0;border-radius:26px;padding:20px;box-shadow:0 14px 34px rgba(15,23,42,.055);}
+    .v10-panel-title {font-size:22px;font-weight:950;letter-spacing:-.45px;color:#0F172A;margin-bottom:8px;}
+    .v10-panel-sub {font-size:13px;color:#64748B;line-height:1.5;margin-bottom:12px;}
+    .v10-task {display:flex;gap:12px;align-items:flex-start;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:18px;padding:13px 14px;margin:9px 0;color:#0F172A;}
+    .v10-task-check {width:22px;height:22px;border-radius:8px;background:#DCFCE7;border:1px solid #86EFAC;color:#166534;font-weight:950;text-align:center;line-height:20px;flex:0 0 auto;}
+    .v10-task-text {font-size:14px;line-height:1.45;font-weight:850;}
+    .v10-copilot {background:linear-gradient(135deg,#FFFFFF 0%,#EFF6FF 100%);border:1px solid #BFDBFE;border-radius:26px;padding:20px;box-shadow:0 14px 34px rgba(37,99,235,.075);}
+    .v10-copilot-title {font-size:20px;color:#1D4ED8;font-weight:950;margin-bottom:8px;}
+    .v10-copilot-text {font-size:14px;color:#0F172A;line-height:1.62;}
+    .v10-risk-strip {display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;margin:14px 0 18px 0;}
+    .v10-risk-pill {background:#FFFFFF;border:1px solid #E2E8F0;border-radius:20px;padding:15px;box-shadow:0 10px 26px rgba(15,23,42,.045);}
+    .v10-risk-pill-k {font-size:12px;color:#64748B;font-weight:950;text-transform:uppercase;letter-spacing:.35px;margin-bottom:8px;}
+    .v10-risk-pill-v {font-size:24px;color:#0F172A;font-weight:950;}
+    .v10-quick-buttons {display:flex;gap:10px;flex-wrap:wrap;margin-top:12px;}
+    @media (max-width:1100px){.v10-grid{grid-template-columns:repeat(2,minmax(0,1fr));}.v10-hero-grid{grid-template-columns:1fr;}.v10-action-grid{grid-template-columns:1fr;}.v10-risk-strip{grid-template-columns:repeat(2,minmax(0,1fr));}}
+
     </style>
     """,
     unsafe_allow_html=True,
@@ -164,7 +205,7 @@ def show_demo_auth_screen():
         st.markdown(
             """
             <div class="ai-card">
-                <div class="ai-title">AYÇA Insight V9.3 KKİ Risk Merkezi</div>
+                <div class="ai-title">AYÇA Insight V10.0 SaaS Sabah Brifingi</div>
                 <div class="ai-text">
                 Bu sürüm üç TEBEOS Excel çıktısını birlikte okur: <b>Envanter</b>, <b>Ürün Bazında Toplamlar</b> ve <b>Satış Hareketleri</b>.
                 Böylece ürün bazlı satış hızı, stok bitiş günü, sipariş tavsiyesi, ölü stok ve kârlılık motoru aktif olur.
@@ -1423,7 +1464,7 @@ if st.sidebar.button("Çıkış Yap", use_container_width=True):
     safe_rerun()
 
 st.sidebar.title("💊 AYÇA Insight")
-st.sidebar.caption("V8.1 SaaS · Kontrol Merkezi + Asistan + Ürün/Doktor/Hasta Zekası")
+st.sidebar.caption("V10.0 SaaS · Sabah Brifingi + Risk Copilot")
 eczane_adi = st.sidebar.text_input("Eczane Adı", value="İdil Eczanesi")
 kullanici_adi = st.sidebar.text_input("Kullanıcı", value="Abdullah Bey")
 
@@ -1465,7 +1506,7 @@ if inventory_file is None or product_file is None or sales_file is None:
         f"""
         <div class="ayca-header">
             <div class="ayca-title">
-                <h1>AYÇA Insight V9.2 KKİ Risk Merkezi</h1>
+                <h1>AYÇA Insight V10.0 SaaS</h1>
                 <p>{eczane_adi} · Üç Excel dosyasını yükle: envanter, ürün bazında toplamlar, satış hareketleri.</p>
             </div>
             <div class="header-pill">Dosya bekleniyor</div>
@@ -1592,7 +1633,7 @@ st.markdown(
     f"""
     <div class="ayca-header">
         <div class="ayca-title">
-            <h1>AYÇA Insight V9.2 KKİ Risk Merkezi</h1>
+            <h1>AYÇA Insight V10.0 SaaS</h1>
             <p>{eczane_adi} · {selected_period} · Gün hesabı: {analysis_days} gün · {today_str}</p>
         </div>
         <div class="header-pill">AYÇA Ürün Puanı: {score}/100 · {score_status(score)}</div>
@@ -1605,11 +1646,11 @@ st.markdown(
     f"""
     <div class="saas-shell">
         <div>
-            <span class="saas-badge">SaaS Kontrol Merkezi</span>
+            <span class="saas-badge">2026 SaaS Control Center</span>
             <span class="saas-badge">{get_membership()} Plan</span>
             <span class="saas-badge">3 Dosyalı TEBEOS Motoru</span>
         </div>
-        <div class="saas-hero-title">Eczanenin bugün ne yapması gerektiğini tek ekranda gösterir.</div>
+        <div class="saas-hero-title">Eczanenin bugün ne yapması gerektiğini tek sabah brifinginde gösterir.</div>
         <div class="saas-hero-sub">AYÇA Insight; satış, stok, kârlılık, tahsilat, doktor, kurum ve hasta sadakat verilerini günlük aksiyonlara dönüştüren yapay zekâ destekli eczane karar destek platformudur.</div>
     </div>
     """,
@@ -1705,10 +1746,84 @@ st.markdown(
 )
 
 
+
+# ============================================================
+# V10 2026 SAAS SABAH BRİFİNGİ YARDIMCILARI
+# ============================================================
+def v10_safe_count(df: pd.DataFrame) -> int:
+    try:
+        return int(len(df))
+    except Exception:
+        return 0
+
+
+def v10_first_product(df: pd.DataFrame, fallback: str = "ürün") -> str:
+    try:
+        if df is not None and not df.empty and "urun" in df.columns:
+            return str(df.iloc[0]["urun"])
+    except Exception:
+        pass
+    return fallback
+
+
+def v10_build_tasks() -> list[str]:
+    tasks = []
+    if len(reorder_df) > 0:
+        first = v10_first_product(reorder_df, "ilk ürün")
+        tasks.append(f"📦 {first} başta olmak üzere {len(reorder_df)} ürün için sipariş listesini kontrol et.")
+    if len(urgent_df) > 0:
+        first = v10_first_product(urgent_df, "kritik ürün")
+        tasks.append(f"🚨 {first} dahil {len(urgent_df)} kritik üründe satış kaçırma riskini kapat.")
+    if len(kki_df) > 0:
+        first = v10_first_product(kki_df, "KKİ riskli ürün")
+        tasks.append(f"💰 {first} dahil {len(kki_df)} KKİ riskli ürünü finansal risk açısından incele.")
+    if len(red_rx_df) + len(green_rx_df) > 0:
+        tasks.append(f"🔐 Kontrollü reçete ürünlerini gözden geçir: {len(red_rx_df)} kırmızı, {len(green_rx_df)} yeşil ürün görünüyor.")
+    if len(dead_df) > 0:
+        tasks.append(f"🧊 {len(dead_df)} ölü stok ürününde bağlı sermaye ve raf aksiyonu planla.")
+    if current_stats.get("tahsilat_acigi", 0) > 0:
+        tasks.append(f"💳 {money_fmt(current_stats['tahsilat_acigi'])} tahsilat açığını kontrol et.")
+    if not tasks:
+        tasks.append("✅ Bugün kritik operasyon riski görünmüyor. Sipariş ve stok ritmini koru.")
+    return tasks[:6]
+
+
+def v10_copilot_text() -> str:
+    lowest = min(score_items, key=score_items.get) if score_items else "stok yönetimi"
+    highest = max(score_items, key=score_items.get) if score_items else "operasyon"
+    parts = []
+    parts.append(f"Bugün eczanenin genel skoru <b>{score}/100</b>. En güçlü alan <b>{highest}</b>, en çok dikkat isteyen alan ise <b>{lowest}</b>.")
+    if len(reorder_df) > 0:
+        parts.append(f"Sipariş motoru <b>{len(reorder_df)}</b> ürün için toplam <b>{money_fmt(order_budget_info['final_total'])}</b> bütçeli öneri oluşturdu.")
+    if len(kki_df) > 0:
+        parts.append(f"KKİ tarafında <b>{len(kki_df)}</b> ürün finansal takip gerektiriyor. Bu ürünlerin satış tutarı <b>{money_fmt(kki_df['satis_tutari'].sum())}</b> seviyesinde.")
+    if len(red_rx_df) or len(green_rx_df):
+        parts.append(f"Reçete merkezinde <b>{len(red_rx_df)}</b> kırmızı ve <b>{len(green_rx_df)}</b> yeşil reçete ürünü eşleşti.")
+    if current_stats.get("marj", 0) < 0.18:
+        parts.append("Brüt marj düşük seviyede. SGK, KKİ ve düşük marjlı ürün grupları birlikte incelenmeli.")
+    return " ".join(parts)
+
+
+def v10_task_html(tasks: list[str]) -> str:
+    html = ""
+    for item in tasks:
+        html += f"<div class='v10-task'><div class='v10-task-check'>✓</div><div class='v10-task-text'>{item}</div></div>"
+    return html
+
+
+def v10_quick_table(title: str, df: pd.DataFrame, cols: list[str], limit: int = 12):
+    st.markdown(f"<div class='section-title'>{title}</div>", unsafe_allow_html=True)
+    if df is None or df.empty:
+        st.info("Bu bölüm için eşleşen ürün bulunamadı.")
+        return
+    available = [c for c in cols if c in df.columns]
+    st.dataframe(df[available].head(limit), use_container_width=True, hide_index=True)
+
+
 # ============================================================
 # SAYFALAR
 # ============================================================
-pages = ["🧭 Kontrol Merkezi", "🎯 AYÇA Asistan", "🏠 Sabah Ekranı", "🩺 Sağlık Karnesi", "🧯 Risk Merkezi", "🛒 Sipariş Motoru", "📦 Ürün Zekası", "🏆 Taşıyan Ürünler", "📉 Sessiz Kâr Kaybı", "💰 Kârlılık", "🧊 Ölü/Yavaş Stok", "📈 Ciro & Tahsilat", "👨‍⚕️ Doktor Intelligence", "🧑‍🤝‍🧑 Hasta Sadakat", "🏥 Kurum Intelligence", "🔐 Reçete Merkezi", "📥 Rapor"]
+pages = ["🏠 Sabah Brifingi", "🧭 Kontrol Merkezi", "🎯 AYÇA Asistan", "🏠 Sabah Ekranı", "🩺 Sağlık Karnesi", "🧯 Risk Merkezi", "🛒 Sipariş Motoru", "📦 Ürün Zekası", "🏆 Taşıyan Ürünler", "📉 Sessiz Kâr Kaybı", "💰 Kârlılık", "🧊 Ölü/Yavaş Stok", "📈 Ciro & Tahsilat", "👨‍⚕️ Doktor Intelligence", "🧑‍🤝‍🧑 Hasta Sadakat", "🏥 Kurum Intelligence", "🔐 Reçete Merkezi", "📥 Rapor"]
 if "active_page" not in st.session_state:
     st.session_state["active_page"] = pages[0]
 if st.session_state.get("active_page") not in pages:
@@ -1719,7 +1834,6 @@ page = st.radio(
     horizontal=True,
     label_visibility="collapsed",
     index=pages.index(st.session_state.get("active_page", pages[0])),
-    key="page_radio",
 )
 st.session_state["active_page"] = page
 
@@ -1731,7 +1845,125 @@ product_cols = [
 ]
 
 
-if page == "🧭 Kontrol Merkezi":
+if page == "🏠 Sabah Brifingi":
+    v10_tasks = v10_build_tasks()
+    v10_copilot = v10_copilot_text()
+    v10_lowest_area = min(score_items, key=score_items.get) if score_items else "Operasyon"
+    v10_top_action = v10_tasks[0] if v10_tasks else "Bugün kritik aksiyon yok."
+
+    st.markdown(
+        f"""
+        <div class="v10-hero">
+            <div class="v10-eyebrow">AYÇA Insight V10 · 2026 SaaS Sabah Brifingi</div>
+            <div class="v10-title">Günaydın {kullanici_adi} 👋</div>
+            <div class="v10-sub">
+                {eczane_adi} için satış, stok, reçete, KKİ, tahsilat ve sipariş verileri tek karar ekranına dönüştürüldü.
+                Bu sayfa grafik raporu değil; bugün ne yapılacağını gösteren yönetici brifingidir.
+            </div>
+            <div class="v10-hero-grid">
+                <div class="v10-brief-list">
+                    <div class="v10-brief-item">🚨 <b>{len(urgent_df)}</b> kritik stok / satış kaçırma riski</div>
+                    <div class="v10-brief-item">💰 <b>{len(kki_df)}</b> KKİ riskli ürün · Satış: <b>{money_fmt(kki_df['satis_tutari'].sum())}</b></div>
+                    <div class="v10-brief-item">🔐 <b>{len(red_rx_df)}</b> kırmızı · <b>{len(green_rx_df)}</b> yeşil reçete ürünü</div>
+                    <div class="v10-brief-item">📦 Bütçeli sipariş önerisi: <b>{money_fmt(order_budget_info['final_total'])}</b></div>
+                </div>
+                <div class="v10-score-card">
+                    <div class="v10-score-label">Eczane Karar Skoru</div>
+                    <div class="v10-score-number">{score}</div>
+                    <div class="v10-score-note">100 üzerinden. Durum: <b>{score_status(score)}</b>. En dikkat isteyen alan: <b>{v10_lowest_area}</b>.</div>
+                </div>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    st.markdown(
+        f"""
+        <div class="v10-grid">
+            <div class="v10-card">
+                <div class="v10-card-k">Ciro</div>
+                <div class="v10-card-v">{money_fmt(current_stats['ciro'])}</div>
+                <div class="v10-card-n">{selected_period} · Brüt kâr {money_fmt(current_stats['kar'])}</div>
+            </div>
+            <div class="v10-card">
+                <div class="v10-card-k">Brüt Marj</div>
+                <div class="v10-card-v">{pct_fmt(current_stats['marj'])}</div>
+                <div class="v10-card-n">Karlılık ve SGK/KKİ etkisi birlikte izlenmeli.</div>
+            </div>
+            <div class="v10-card">
+                <div class="v10-card-k">Stok Değeri</div>
+                <div class="v10-card-v">{money_fmt(product_master['stok_degeri'].sum())}</div>
+                <div class="v10-card-n">Ölü stok: {money_fmt(dead_df['stok_degeri'].sum())}</div>
+            </div>
+            <div class="v10-card">
+                <div class="v10-card-k">Sipariş</div>
+                <div class="v10-card-v">{money_fmt(order_budget_info['final_total'])}</div>
+                <div class="v10-card-n">{len(reorder_df)} ürün için bütçeli öneri.</div>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    st.markdown('<div class="v10-action-grid">', unsafe_allow_html=True)
+    left, right = st.columns([1.05, .95])
+    with left:
+        st.markdown(
+            f"""
+            <div class="v10-panel">
+                <div class="v10-panel-title">Bugün Yapılacaklar</div>
+                <div class="v10-panel-sub">Linear mantığı: grafik yerine tamamlanabilir aksiyonlar.</div>
+                {v10_task_html(v10_tasks)}
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+    with right:
+        st.markdown(
+            f"""
+            <div class="v10-copilot">
+                <div class="v10-copilot-title">🤖 AYÇA Copilot Yorumu</div>
+                <div class="v10-copilot-text">{v10_copilot}</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+        q1, q2 = st.columns(2)
+        with q1:
+            if st.button("🛒 Siparişleri İncele", use_container_width=True, key="v10_go_order"):
+                st.session_state["active_page"] = "🛒 Sipariş Motoru"
+                safe_rerun()
+        with q2:
+            if st.button("🧯 Riskleri İncele", use_container_width=True, key="v10_go_risk"):
+                st.session_state["active_page"] = "🧯 Risk Merkezi"
+                safe_rerun()
+    st.markdown('</div>', unsafe_allow_html=True)
+
+    st.markdown('<div class="section-title">Risk Merkezi Özeti</div>', unsafe_allow_html=True)
+    st.markdown(
+        f"""
+        <div class="v10-risk-strip">
+            <div class="v10-risk-pill"><div class="v10-risk-pill-k">🔴 Kırmızı</div><div class="v10-risk-pill-v">{len(red_rx_df)}</div></div>
+            <div class="v10-risk-pill"><div class="v10-risk-pill-k">🟢 Yeşil</div><div class="v10-risk-pill-v">{len(green_rx_df)}</div></div>
+            <div class="v10-risk-pill"><div class="v10-risk-pill-k">🟣 Mor</div><div class="v10-risk-pill-v">{int(product_master.get('mor_recete_mi', pd.Series(False, index=product_master.index)).sum()) if 'mor_recete_mi' in product_master.columns else 0}</div></div>
+            <div class="v10-risk-pill"><div class="v10-risk-pill-k">▼ Ek İzlem</div><div class="v10-risk-pill-v">{len(ek_izlem_df)}</div></div>
+            <div class="v10-risk-pill"><div class="v10-risk-pill-k">💰 KKİ</div><div class="v10-risk-pill-v">{len(kki_df)}</div></div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    ctab1, ctab2, ctab3 = st.tabs(["🚨 İlk Öncelik", "💰 KKİ", "🔐 Reçete"])
+    with ctab1:
+        v10_quick_table("İlk Öncelikli Siparişler", reorder_df, product_cols, 12)
+    with ctab2:
+        v10_quick_table("KKİ Riskli Ürünler", kki_df, product_cols, 12)
+    with ctab3:
+        combined_rx = pd.concat([red_rx_df, green_rx_df, ek_izlem_df], ignore_index=True) if any([len(red_rx_df), len(green_rx_df), len(ek_izlem_df)]) else pd.DataFrame()
+        v10_quick_table("Reçete / Ek İzlem Ürünleri", combined_rx, product_cols, 12)
+
+elif page == "🧭 Kontrol Merkezi":
     st.markdown('<div class="section-title">🧭 SaaS Kontrol Merkezi</div>', unsafe_allow_html=True)
     st.caption("Bu bölüm eczacının uygulamayı açtığında ilk görmesi gereken yönetici ekranıdır: skor, risk, fırsat ve aksiyon.")
 
