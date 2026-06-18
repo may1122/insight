@@ -1,5 +1,5 @@
 # ============================================================
-# AYÇA Insight V8.2 SaaS - Eczacı Sipariş Filtresi + Kontrol Merkezi
+# AYÇA Insight V9.0 Risk Merkezi - Kontrol Merkezi + Asistan + Ürün Fırsatları
 # ------------------------------------------------------------
 # Zorunlu / Önerilen dosyalar:
 # 1) Envanter Exceli
@@ -43,7 +43,7 @@ import streamlit as st
 # STREAMLIT AYARI
 # ============================================================
 st.set_page_config(
-    page_title="AYÇA Insight V8.2 SaaS",
+    page_title="AYÇA Insight V9.0 Risk Merkezi",
     page_icon="💊",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -164,7 +164,7 @@ def show_demo_auth_screen():
         st.markdown(
             """
             <div class="ai-card">
-                <div class="ai-title">AYÇA Insight V8.2 SaaS</div>
+                <div class="ai-title">AYÇA Insight V9.0 Risk Merkezi</div>
                 <div class="ai-text">
                 Bu sürüm üç TEBEOS Excel çıktısını birlikte okur: <b>Envanter</b>, <b>Ürün Bazında Toplamlar</b> ve <b>Satış Hareketleri</b>.
                 Böylece ürün bazlı satış hızı, stok bitiş günü, sipariş tavsiyesi, ölü stok ve kârlılık motoru aktif olur.
@@ -373,6 +373,236 @@ def apply_plot_theme(fig, height=360):
 
 def clean_text_series(s):
     return s.astype(str).replace({"nan": "", "None": ""})
+
+
+# ============================================================
+# RİSK REFERANS MOTORU - KIRMIZI / YEŞİL / EK İZLEM / KKİ
+# ============================================================
+def normalize_product_key(value: str) -> str:
+    value = str(value or "").upper().strip()
+    tr_map = str.maketrans("ÇĞİÖŞÜÂÎÛ", "CGIOSUAIU")
+    value = value.translate(tr_map)
+    value = re.sub(r"[^A-Z0-9]+", " ", value)
+    value = re.sub(r"\s+", " ", value).strip()
+    return value
+
+
+def _risk_rows_from_keywords(keywords, risk_tipi, risk_seviyesi, kaynak, aciklama=""):
+    return [
+        {
+            "barkod": "",
+            "urun_anahtar": normalize_product_key(k),
+            "risk_tipi": risk_tipi,
+            "risk_seviyesi": risk_seviyesi,
+            "kaynak": kaynak,
+            "aciklama": aciklama,
+            "kki_fark_tl": 0.0,
+        }
+        for k in keywords
+    ]
+
+
+@st.cache_data(show_spinner=False)
+def build_builtin_risk_reference() -> pd.DataFrame:
+    """Demo/başlangıç risk sözlüğü.
+
+    Not: Canlı kullanımda bu tablo bir Excel master dosyasından beslenmelidir.
+    Buradaki liste PDF'lerden çıkan marka/ürün anahtarlarıyla ilk görünümü oluşturur.
+    Barkodlu eşleşme için sol menüde 'Risk Master Excel' yüklenebilir.
+    """
+    red = [
+        "ABSTRAL", "ACTIQ", "ALDINE", "ALDOLAN", "CEDEPTIN", "CONCERTA", "DUROGESIC",
+        "EFFENTORA", "FENTANYL", "FENTANYL CITRATE", "FENTANEST", "FENTAVER", "JURNISTA",
+        "KONSENIDAT", "MEDIKINET", "M ESLON", "M-ESLON", "MORFIA", "MORFIN", "MORPHINE",
+        "OPIVA", "OXOPANE", "PETHIDINE", "PETHOLAN", "RAPIFEN", "RENTANIL", "RITALIN",
+        "SPRAVATO", "SUBOXONE", "SUFENTA", "TALINAT", "ULTIVA", "XYREM",
+    ]
+    green = [
+        "AKINETON", "ALYSE", "ANSIOX", "APO ALPRAZ", "AS ALPRALAM", "ATIVAN", "CODEFEN",
+        "CONTRAMAL", "DALIZOM", "DEMIZOLAM", "DIAPAM", "DIAZEM", "DIAZEPAM DESITIN",
+        "DORMICUM", "DUAMOL", "EKIPENTAL", "FENOKODIN", "FIXDOL", "GALARA", "GERICA",
+        "HYPNOMIDATE", "IMOVANE", "KETALAR", "KLIPAKS", "LIBKOL", "LIZAN", "LUMINAL",
+        "LUMINALETTEN", "LYPRE", "LYRICA", "MADOL", "MIDOLAM", "MILOZ", "NEOGABA",
+        "NERVIUM", "NEURICA", "PADEN", "PAGADIN", "PAGAMAX", "PENTAL", "PERGE",
+        "PIREPSIL", "PRECOBAL", "PRELICA", "PREPLUS", "REGAPEN", "RIVOTRIL", "ROLADOL",
+        "SEDOZOLAM", "SNAPLINE", "SPESICOR", "STABINA", "STABLON", "SYMRA", "TRADOLEX",
+        "TRAMADOLOR", "TRAMOSEL", "TRANXILENE", "ULTRAMEX", "XANAX", "ZALDIAR", "ZENIXA", "ZOLAMID",
+    ]
+    ek_izlem = [
+        "XARELTO", "ELIQUIS", "JANUVIA", "FORXIGA", "JARDIANCE", "OZEMPIC", "RYBELSUS", "SAXENDA",
+        "TRULICITY", "KEYTRUDA", "OPDIVO", "TECENTRIQ", "AVASTIN", "HERCEPTIN", "HUMIRA", "COSENTYX",
+    ]
+    kki_hesaplamali = [
+        "ACNEGEN", "ALDARA", "BENZADERM", "BRUNAC", "CONVULEX", "DAFLON", "DECAPEPTYL",
+        "DIAZEPAM DESITIN", "ENDOXAN", "FAMODIN", "HEPARINUM", "HIBOR", "KALINOR", "KARBALEX",
+        "LEUNASE", "LH RH", "LOKALEN", "LOTEMAX", "MAXICAINE", "METHOTREXATE EBEWE", "NITROLINGUAL",
+        "NOKREV", "OCTOSTIM", "OLICLINOMEL", "OVADRIL", "PEN OS", "R X SUSPANSIYON", "SALOFALK",
+        "SUBOXONE", "TODAVIT", "TRACUTIL", "TURKFLEKS", "ULTRACAIN", "URSOFALK", "VEINDOCANOL", "VIRGAN",
+    ]
+    kki_2 = [
+        "CALQUENCE", "CETROTIDE", "FASLODEX", "GENOTROPIN", "GONAL F", "IRESSA", "JAKAVI", "LYNPARZA",
+        "MEKINIST", "NUBEQA", "OVITRELLE", "TAFINLAR", "TAGRISSO", "TRODELVY", "TYKERB", "VALAMOR",
+        "VENCLYXTO", "VERXANT", "ZEJULA", "ZOLADEX",
+    ]
+    kki_3 = ["IMBRUVICA", "NGENLA"]
+
+    rows = []
+    rows += _risk_rows_from_keywords(red, "KIRMIZI_RECETE", "Yüksek", "Kırmızı reçete PDF", "Kontrollü kırmızı reçete ürünü")
+    rows += _risk_rows_from_keywords(green, "YESIL_RECETE", "Orta-Yüksek", "Yeşil reçete PDF", "Kontrollü yeşil reçete ürünü")
+    rows += _risk_rows_from_keywords(ek_izlem, "EK_IZLEM", "Orta", "TİTCK Ek İzlem", "Ek izlem / özel takip adayı")
+    rows += _risk_rows_from_keywords(kki_hesaplamali, "KKI_HESAPLAMALI", "Finansal Risk", "İEO KKİ Listesi", "KKİ eksik / hesaplamalı ilaç")
+    rows += _risk_rows_from_keywords(kki_2, "KKI_2_YILDIZ", "Takip", "İEO KKİ Listesi", "Firma KKİ farkını takip eden ay içinde öder")
+    rows += _risk_rows_from_keywords(kki_3, "KKI_3_YILDIZ", "Bilgi", "İEO KKİ Listesi", "Firma KKİ farkını eczacıya öder")
+
+    # PDF'de net görülen bazı barkodlar. Barkod varsa isimden daha güvenilir eşleşir.
+    rows += [
+        {"barkod":"8699769950071", "urun_anahtar":"HIBOR", "risk_tipi":"KKI_HESAPLAMALI", "risk_seviyesi":"Finansal Risk", "kaynak":"İEO KKİ Listesi", "aciklama":"KKİ fark riski", "kki_fark_tl":-320.45},
+        {"barkod":"8699510050012", "urun_anahtar":"SUBOXONE", "risk_tipi":"KKI_HESAPLAMALI", "risk_seviyesi":"Finansal Risk", "kaynak":"İEO KKİ Listesi", "aciklama":"KKİ fark riski", "kki_fark_tl":-285.08},
+        {"barkod":"8699510050029", "urun_anahtar":"SUBOXONE", "risk_tipi":"KKI_HESAPLAMALI", "risk_seviyesi":"Finansal Risk", "kaynak":"İEO KKİ Listesi", "aciklama":"KKİ fark riski", "kki_fark_tl":-883.19},
+        {"barkod":"8699510030175", "urun_anahtar":"CONVULEX", "risk_tipi":"KKI_HESAPLAMALI", "risk_seviyesi":"Finansal Risk", "kaynak":"İEO KKİ Listesi", "aciklama":"KKİ fark riski", "kki_fark_tl":-66.50},
+        {"barkod":"8699510030168", "urun_anahtar":"CONVULEX", "risk_tipi":"KKI_HESAPLAMALI", "risk_seviyesi":"Finansal Risk", "kaynak":"İEO KKİ Listesi", "aciklama":"KKİ fark riski", "kki_fark_tl":-108.51},
+        {"barkod":"8699786092860", "urun_anahtar":"TAGRISSO", "risk_tipi":"KKI_2_YILDIZ", "risk_seviyesi":"Takip", "kaynak":"İEO KKİ Listesi", "aciklama":"Firma KKİ farkını takip eden ay içinde öder", "kki_fark_tl":0.0},
+        {"barkod":"8699786092877", "urun_anahtar":"TAGRISSO", "risk_tipi":"KKI_2_YILDIZ", "risk_seviyesi":"Takip", "kaynak":"İEO KKİ Listesi", "aciklama":"Firma KKİ farkını takip eden ay içinde öder", "kki_fark_tl":0.0},
+    ]
+    ref = pd.DataFrame(rows).drop_duplicates(["barkod", "urun_anahtar", "risk_tipi"])
+    return ref
+
+
+def standardize_risk_reference(raw_df: pd.DataFrame) -> pd.DataFrame:
+    """Kullanıcının yükleyeceği risk master Excel/CSV için esnek kolon okuyucu."""
+    cols = list(raw_df.columns)
+    barkod_col = find_col(cols, ["Barkod", "Barcode", "GTIN"])
+    name_col = find_col(cols, ["Ürün Adı", "Urun Adi", "İlaç Adı", "Ilac Adi", "urun_anahtar", "İlaç"])
+    risk_col = find_col(cols, ["Risk Tipi", "risk_tipi", "Kategori", "Liste", "Reçete Tipi", "Recete Tipi"])
+    level_col = find_col(cols, ["Risk Seviyesi", "risk_seviyesi", "Seviye", "Önem"])
+    source_col = find_col(cols, ["Kaynak", "Source"])
+    note_col = find_col(cols, ["Açıklama", "Aciklama", "Not", "Açıklamalar"])
+    fark_col = find_col(cols, ["Fark", "KKİ Fark", "KKI Fark", "kki_fark_tl", "Zarar"])
+
+    df = pd.DataFrame()
+    df["barkod"] = clean_text_series(raw_df[barkod_col]).str.replace(r"\.0$", "", regex=True).str.strip() if barkod_col else ""
+    df["urun_anahtar"] = clean_text_series(raw_df[name_col]).apply(normalize_product_key) if name_col else ""
+    df["risk_tipi"] = clean_text_series(raw_df[risk_col]).str.upper().str.strip() if risk_col else "OZEL_RISK"
+    df["risk_tipi"] = df["risk_tipi"].replace({
+        "KIRMIZI": "KIRMIZI_RECETE", "YEŞİL": "YESIL_RECETE", "YESIL": "YESIL_RECETE",
+        "EK IZLEM": "EK_IZLEM", "EK İZLEM": "EK_IZLEM", "KKI": "KKI_HESAPLAMALI", "KKİ": "KKI_HESAPLAMALI",
+    })
+    df["risk_seviyesi"] = clean_text_series(raw_df[level_col]).str.strip() if level_col else "Takip"
+    df["kaynak"] = clean_text_series(raw_df[source_col]).str.strip() if source_col else "Kullanıcı Risk Master"
+    df["aciklama"] = clean_text_series(raw_df[note_col]).str.strip() if note_col else ""
+    df["kki_fark_tl"] = pd.to_numeric(raw_df[fark_col], errors="coerce").fillna(0) if fark_col else 0.0
+    df = df[(df["barkod"].astype(str).str.len() > 0) | (df["urun_anahtar"].astype(str).str.len() > 0)]
+    return df.drop_duplicates(["barkod", "urun_anahtar", "risk_tipi"])
+
+
+@st.cache_data(show_spinner=False)
+def load_uploaded_risk_reference(uploaded_file) -> pd.DataFrame:
+    if uploaded_file is None:
+        return pd.DataFrame()
+    name = uploaded_file.name.lower()
+    if name.endswith(".csv"):
+        raw = pd.read_csv(uploaded_file)
+    else:
+        raw = pd.read_excel(uploaded_file)
+    return standardize_risk_reference(raw)
+
+
+def append_label(existing: str, new_value: str) -> str:
+    parts = [p for p in str(existing or "").split(";") if p]
+    if new_value not in parts:
+        parts.append(new_value)
+    return ";".join(parts)
+
+
+def apply_risk_reference(product_master: pd.DataFrame, risk_ref: pd.DataFrame) -> pd.DataFrame:
+    df = product_master.copy()
+    for col in ["KIRMIZI_RECETE", "YESIL_RECETE", "EK_IZLEM", "KKI_HESAPLAMALI", "KKI_2_YILDIZ", "KKI_3_YILDIZ", "OZEL_RISK"]:
+        df[col.lower() + "_mi"] = False
+    df["urun_key"] = df["urun"].apply(normalize_product_key)
+    df["risk_tipi"] = ""
+    df["risk_kaynak"] = ""
+    df["risk_aciklama"] = ""
+    df["kki_birim_fark_tl"] = 0.0
+
+    if risk_ref is None or risk_ref.empty:
+        return df
+
+    ref = risk_ref.copy()
+    for _, row in ref.iterrows():
+        risk_type = str(row.get("risk_tipi", "OZEL_RISK") or "OZEL_RISK").upper().strip()
+        flag_col = risk_type.lower() + "_mi"
+        if flag_col not in df.columns:
+            df[flag_col] = False
+        barkod = str(row.get("barkod", "") or "").replace(".0", "").strip()
+        key = normalize_product_key(row.get("urun_anahtar", ""))
+        mask = pd.Series(False, index=df.index)
+        if barkod:
+            mask = mask | (df["barkod"].astype(str).str.replace(r"\.0$", "", regex=True).str.strip() == barkod)
+        if key:
+            # Marka/anahtar bazlı güvenli içerme. Örn: LYRICA 150 MG 56 KAPSUL.
+            mask = mask | df["urun_key"].str.contains(r"(^| )" + re.escape(key) + r"( |$)", regex=True, na=False)
+        if not mask.any():
+            continue
+        df.loc[mask, flag_col] = True
+        df.loc[mask, "risk_tipi"] = df.loc[mask, "risk_tipi"].apply(lambda x: append_label(x, risk_type))
+        kaynak = str(row.get("kaynak", "") or "")
+        aciklama = str(row.get("aciklama", "") or "")
+        df.loc[mask, "risk_kaynak"] = df.loc[mask, "risk_kaynak"].apply(lambda x: append_label(x, kaynak))
+        df.loc[mask, "risk_aciklama"] = df.loc[mask, "risk_aciklama"].apply(lambda x: append_label(x, aciklama))
+        fark = float(row.get("kki_fark_tl", 0) or 0)
+        if fark != 0:
+            df.loc[mask, "kki_birim_fark_tl"] = np.where(df.loc[mask, "kki_birim_fark_tl"] == 0, fark, df.loc[mask, "kki_birim_fark_tl"])
+
+    df["kontrollu_recete_mi"] = df.get("kirmizi_recete_mi", False) | df.get("yesil_recete_mi", False)
+    df["kki_riskli_mi"] = df.get("kki_hesaplamali_mi", False) | df.get("kki_2_yildiz_mi", False) | df.get("kki_3_yildiz_mi", False)
+    df["risk_var_mi"] = df["risk_tipi"].astype(str).str.len() > 0
+    df["kki_tahmini_fark_tl"] = df["kki_birim_fark_tl"] * pd.to_numeric(df.get("satilan_adet", 0), errors="coerce").fillna(0)
+
+    # Pahalı/seyrek ürün filtresi, kontrollü reçete veya KKİ riskli ürünleri 'reçete geldikçe al' içine gömmesin.
+    if "recete_geldikce_al_mi" in df.columns:
+        df.loc[df["kontrollu_recete_mi"] | df["kki_riskli_mi"], "recete_geldikce_al_mi"] = False
+    df["kontrollu_takip_mi"] = df["kontrollu_recete_mi"] & (df.get("teknik_siparis_onerisi_ham", 0) > 0)
+
+    df["risk_segmenti"] = np.select(
+        [
+            df.get("kirmizi_recete_mi", False),
+            df.get("yesil_recete_mi", False),
+            df.get("kki_hesaplamali_mi", False),
+            df.get("kki_2_yildiz_mi", False),
+            df.get("kki_3_yildiz_mi", False),
+            df.get("ek_izlem_mi", False),
+        ],
+        ["Kırmızı Reçete", "Yeşil Reçete", "KKİ Hesaplamalı", "KKİ 2 Yıldız", "KKİ 3 Yıldız", "Ek İzlem"],
+        default="Normal",
+    )
+    df.loc[df["kontrollu_recete_mi"] & (df["siparis_segmenti"].isin(["Acil Sipariş", "Öncelikli Sipariş"])), "siparis_segmenti"] = "Kontrollü Reçete Takibi"
+    df.loc[df["kki_riskli_mi"] & (df["aksiyon"] == "Normal takip"), "aksiyon"] = "KKİ risk merkezi - finansal takip"
+    return df
+
+
+def risk_summary_table(product_master: pd.DataFrame) -> pd.DataFrame:
+    risk_cols = [
+        ("Kırmızı Reçete", "kirmizi_recete_mi"),
+        ("Yeşil Reçete", "yesil_recete_mi"),
+        ("Ek İzlem", "ek_izlem_mi"),
+        ("KKİ Hesaplamalı", "kki_hesaplamali_mi"),
+        ("KKİ 2 Yıldız", "kki_2_yildiz_mi"),
+        ("KKİ 3 Yıldız", "kki_3_yildiz_mi"),
+    ]
+    rows = []
+    for label, col in risk_cols:
+        if col not in product_master.columns:
+            continue
+        subset = product_master[product_master[col]].copy()
+        rows.append({
+            "Risk Grubu": label,
+            "Ürün Sayısı": int(len(subset)),
+            "Stok Değeri": float(subset["stok_degeri"].sum()) if not subset.empty else 0.0,
+            "Satış Tutarı": float(subset["satis_tutari"].sum()) if not subset.empty else 0.0,
+            "Satılan Adet": float(subset["satilan_adet"].sum()) if not subset.empty else 0.0,
+            "Tahmini KKİ Farkı": float(subset.get("kki_tahmini_fark_tl", pd.Series(dtype=float)).sum()) if not subset.empty else 0.0,
+        })
+    return pd.DataFrame(rows)
 
 
 # ============================================================
@@ -595,11 +825,11 @@ def make_product_master(inv_df: pd.DataFrame, prod_df: pd.DataFrame, analysis_da
 
     # Teknik ham öneri: matematiksel olarak stok hedefinin altında kalan tüm ürünler.
     # Eczacı filtresi: pahalı ve seyrek satılan özel/akıllı ilaçlar otomatik acil siparişe düşmesin.
-    # Kural: Ürün bu analiz döneminde 10 adet ve üzeri sattıysa VEYA birim satış fiyatı 15.000 TL ve altındaysa sipariş listesine alınır.
+    # Kural: Ürün bu analiz döneminde 3 adetten fazla sattıysa VEYA birim satış fiyatı 10.000 TL altındaysa sipariş listesine alınır.
     # Aksi halde ürün ayrı olarak "Reçete geldikçe alınabilir" segmentine düşer.
     master["teknik_siparis_onerisi_ham"] = np.maximum(0, master["hedef_stok"] - master["stok"]).round(0)
     master["teknik_siparis_tahmini_tutar_ham"] = master["teknik_siparis_onerisi_ham"] * master["birim_satis"].fillna(0)
-    master["siparis_filtre_gecer_mi"] = (master["satilan_adet"] >= 10) | (master["birim_satis"] <= 15000)
+    master["siparis_filtre_gecer_mi"] = (master["satilan_adet"] > 3) | (master["birim_satis"] < 10000)
     master["recete_geldikce_al_mi"] = (master["teknik_siparis_onerisi_ham"] > 0) & (~master["siparis_filtre_gecer_mi"])
     master["siparis_onerisi_ham"] = np.where(master["siparis_filtre_gecer_mi"], master["teknik_siparis_onerisi_ham"], 0).round(0)
     master["siparis_tahmini_tutar_ham"] = master["siparis_onerisi_ham"] * master["birim_satis"].fillna(0)
@@ -619,7 +849,7 @@ def make_product_master(inv_df: pd.DataFrame, prod_df: pd.DataFrame, analysis_da
     master["sermaye_riski_mi"] = (master["stok_degeri"] > master["stok_degeri"].quantile(0.90)) & (master["stok_bitis_gunu"] > 60)
     master["stokta_yok_satmis_mi"] = (master["satilan_adet"] > 0) & (master["stok"] <= 0)
     master["acil_siparis_mi"] = master["siparis_gerekli_mi"] & master["siparis_filtre_gecer_mi"] & (
-        master["stokta_yok_satmis_mi"] | (master["hizli_tukeniyor_mu"] & (master["satilan_adet"] >= 10)) | (master["kritik_mi"] & (master["satilan_adet"] > 0))
+        master["stokta_yok_satmis_mi"] | (master["hizli_tukeniyor_mu"] & (master["satilan_adet"] > 3)) | (master["kritik_mi"] & (master["satilan_adet"] > 0))
     )
     master["oncelikli_siparis_mi"] = master["siparis_gerekli_mi"] & master["siparis_filtre_gecer_mi"] & (~master["acil_siparis_mi"])
     master["siparis_segmenti"] = np.select(
@@ -970,7 +1200,7 @@ def apply_order_budget(product_master: pd.DataFrame, order_budget_ratio: float) 
 
     # Eczacı filtresine göre segmentleri güncelle.
     df["acil_siparis_mi"] = df["siparis_gerekli_mi"] & df.get("siparis_filtre_gecer_mi", True) & (
-        df["stokta_yok_satmis_mi"] | (df["hizli_tukeniyor_mu"] & (df["satilan_adet"] >= 10)) | (df["kritik_mi"] & (df["satilan_adet"] > 0))
+        df["stokta_yok_satmis_mi"] | (df["hizli_tukeniyor_mu"] & (df["satilan_adet"] > 3)) | (df["kritik_mi"] & (df["satilan_adet"] > 0))
     )
     df["oncelikli_siparis_mi"] = df["siparis_gerekli_mi"] & df.get("siparis_filtre_gecer_mi", True) & (~df["acil_siparis_mi"])
     df["recete_geldikce_al_mi"] = (df.get("teknik_siparis_onerisi_ham", df["siparis_onerisi_ham"]) > 0) & (~df.get("siparis_filtre_gecer_mi", True))
@@ -1012,7 +1242,7 @@ def apply_order_budget(product_master: pd.DataFrame, order_budget_ratio: float) 
         df["siparis_tahmini_tutar"] = df["siparis_onerisi"] * pd.to_numeric(df["birim_satis"], errors="coerce").fillna(0)
         df["siparis_gerekli_mi"] = df["siparis_onerisi"] > 0
         df["acil_siparis_mi"] = df["siparis_gerekli_mi"] & df.get("siparis_filtre_gecer_mi", True) & (
-            df["stokta_yok_satmis_mi"] | (df["hizli_tukeniyor_mu"] & (df["satilan_adet"] >= 10)) | (df["kritik_mi"] & (df["satilan_adet"] > 0))
+            df["stokta_yok_satmis_mi"] | (df["hizli_tukeniyor_mu"] & (df["satilan_adet"] > 3)) | (df["kritik_mi"] & (df["satilan_adet"] > 0))
         )
         df["oncelikli_siparis_mi"] = df["siparis_gerekli_mi"] & df.get("siparis_filtre_gecer_mi", True) & (~df["acil_siparis_mi"])
         df["recete_geldikce_al_mi"] = (df.get("teknik_siparis_onerisi_ham", df["siparis_onerisi_ham"]) > 0) & (~df.get("siparis_filtre_gecer_mi", True))
@@ -1142,6 +1372,7 @@ def create_excel_report(product_master, sales_df, period_df, kurum_df, doktor_df
     export_cols = [
         "barkod", "urun", "urun_grubu", "raf", "stok", "kritik_stok", "psf_final", "stok_degeri",
         "satilan_adet", "satis_tutari", "kar_tutari", "kar_marji", "gunluk_satis_hizi", "stok_bitis_gunu_goster",
+        "risk_segmenti", "risk_tipi", "risk_kaynak", "kki_birim_fark_tl", "kki_tahmini_fark_tl",
         "hedef_stok", "siparis_onerisi", "siparis_tahmini_tutar", "abc_sinif", "aksiyon"
     ]
     with pd.ExcelWriter(output, engine="openpyxl") as writer:
@@ -1149,6 +1380,10 @@ def create_excel_report(product_master, sales_df, period_df, kurum_df, doktor_df
         product_master[product_master["siparis_gerekli_mi"]][export_cols].to_excel(writer, sheet_name="Siparis_Onerisi", index=False)
         if "recete_geldikce_al_mi" in product_master.columns:
             product_master[product_master["recete_geldikce_al_mi"]][export_cols].to_excel(writer, sheet_name="Recete_Geldikce_Al", index=False)
+        if "risk_var_mi" in product_master.columns:
+            product_master[product_master["risk_var_mi"]][export_cols].to_excel(writer, sheet_name="Risk_Merkezi", index=False)
+        if "kki_riskli_mi" in product_master.columns:
+            product_master[product_master["kki_riskli_mi"]][export_cols].to_excel(writer, sheet_name="KKI_Risk", index=False)
         product_master[product_master["olu_stok_mu"]][export_cols].to_excel(writer, sheet_name="Olu_Stok", index=False)
         product_master[product_master["yavas_stok_mu"]][export_cols].to_excel(writer, sheet_name="Yavas_Stok", index=False)
         product_master[product_master["stokta_yok_satmis_mi"]][export_cols].to_excel(writer, sheet_name="Stokta_Yok_Satmis", index=False)
@@ -1195,6 +1430,7 @@ kullanici_adi = st.sidebar.text_input("Kullanıcı", value="Abdullah Bey")
 inventory_file = st.sidebar.file_uploader("1/3) Envanter Exceli - ZORUNLU", type=["xlsx", "xls"], key="inventory_file")
 product_file = st.sidebar.file_uploader("2/3) Ürün Bazında Toplamlar Exceli - ZORUNLU", type=["xlsx", "xls"], key="product_file")
 sales_file = st.sidebar.file_uploader("3/3) Satış Hareketleri Exceli - ZORUNLU", type=["xlsx", "xls"], key="sales_file")
+risk_master_file = st.sidebar.file_uploader("Opsiyonel) Risk Master Excel / CSV", type=["xlsx", "xls", "csv"], key="risk_master_file", help="Kırmızı/yeşil reçete, ek izlem ve KKİ listelerini barkod veya ürün adıyla içeren master tablo.")
 
 st.sidebar.markdown("---")
 selected_period = st.sidebar.selectbox("Satış hareket dönemi", ["Son 7 gün", "Son 14 gün", "Son 30 gün", "Tüm veri"], index=2)
@@ -1229,7 +1465,7 @@ if inventory_file is None or product_file is None or sales_file is None:
         f"""
         <div class="ayca-header">
             <div class="ayca-title">
-                <h1>AYÇA Insight V8.2 SaaS</h1>
+                <h1>AYÇA Insight V9.0 Risk Merkezi</h1>
                 <p>{eczane_adi} · Üç Excel dosyasını yükle: envanter, ürün bazında toplamlar, satış hareketleri.</p>
             </div>
             <div class="header-pill">Dosya bekleniyor</div>
@@ -1283,7 +1519,13 @@ analysis_days = period_days if use_sales_date_span else int(manual_days)
 analysis_days = max(1, int(analysis_days))
 
 product_master = make_product_master(inventory_df, product_df, analysis_days, target_days, safety_days)
+# Risk referansları: gömülü demo sözlüğü + kullanıcı tarafından yüklenen güncel master dosya.
+builtin_risk_ref = build_builtin_risk_reference()
+uploaded_risk_ref = load_uploaded_risk_reference(risk_master_file) if risk_master_file is not None else pd.DataFrame()
+risk_reference_df = pd.concat([builtin_risk_ref, uploaded_risk_ref], ignore_index=True).drop_duplicates(["barkod", "urun_anahtar", "risk_tipi"])
+product_master = apply_risk_reference(product_master, risk_reference_df)
 product_master, order_budget_info = apply_order_budget(product_master, order_budget_ratio)
+product_master = apply_risk_reference(product_master, risk_reference_df)
 current_stats = summarize_sales(period_df)
 previous_stats = summarize_sales(prev_df)
 score, score_items, score_weights = health_score(product_master, current_stats, previous_stats)
@@ -1328,6 +1570,13 @@ abc_df = product_master.groupby("abc_sinif", as_index=False).agg(urun_sayisi=("b
 group_df = product_master.groupby("urun_grubu", as_index=False).agg(urun_sayisi=("barkod", "count"), satilan_adet=("satilan_adet", "sum"), ciro=("satis_tutari", "sum"), kar=("kar_tutari", "sum"), stok_degeri=("stok_degeri", "sum"), siparis_onerisi=("siparis_onerisi", "sum")).sort_values("ciro", ascending=False)
 group_df["marj"] = np.where(group_df["ciro"] > 0, group_df["kar"] / group_df["ciro"], 0)
 
+risk_summary_df = risk_summary_table(product_master)
+risk_df = product_master[product_master.get("risk_var_mi", False)].sort_values(["risk_segmenti", "satis_tutari"], ascending=[True, False])
+red_rx_df = product_master[product_master.get("kirmizi_recete_mi", False)].sort_values("satis_tutari", ascending=False)
+green_rx_df = product_master[product_master.get("yesil_recete_mi", False)].sort_values("satis_tutari", ascending=False)
+ek_izlem_df = product_master[product_master.get("ek_izlem_mi", False)].sort_values("satis_tutari", ascending=False)
+kki_df = product_master[product_master.get("kki_riskli_mi", False)].sort_values("satis_tutari", ascending=False)
+
 # Eşleşme kalitesi
 product_barcodes = set(product_df["barkod"])
 inv_barcodes = set(inventory_df["barkod"])
@@ -1343,7 +1592,7 @@ st.markdown(
     f"""
     <div class="ayca-header">
         <div class="ayca-title">
-            <h1>AYÇA Insight V8.2 SaaS</h1>
+            <h1>AYÇA Insight V9.0 Risk Merkezi</h1>
             <p>{eczane_adi} · {selected_period} · Gün hesabı: {analysis_days} gün · {today_str}</p>
         </div>
         <div class="header-pill">AYÇA Ürün Puanı: {score}/100 · {score_status(score)}</div>
@@ -1384,6 +1633,12 @@ with r2: make_mini_card("Stokta Yok Satmış", str(len(urgent_df)), "Satılmış
 with r3: make_mini_card("Ölü Stok", str(len(dead_df)), money_fmt(dead_df["stok_degeri"].sum()), "alert-orange" if len(dead_df) else "alert-green")
 with r4: make_mini_card("Yavaş Stok", str(len(slow_df)), money_fmt(slow_df["stok_degeri"].sum()), "alert-purple" if len(slow_df) else "alert-green")
 with r5: make_mini_card("Tahsilat Açığı", money_fmt(current_stats["tahsilat_acigi"]), f"Oran {pct_fmt(safe_div(current_stats['tahsilat_acigi'], current_stats['ciro']))}", "alert-red" if current_stats["tahsilat_acigi"] > 0 else "alert-green")
+
+risk1, risk2, risk3, risk4 = st.columns(4)
+with risk1: make_mini_card("🔴 Kırmızı Reçete", str(len(red_rx_df)), money_fmt(red_rx_df["stok_degeri"].sum()), "alert-red" if len(red_rx_df) else "")
+with risk2: make_mini_card("🟢 Yeşil Reçete", str(len(green_rx_df)), money_fmt(green_rx_df["stok_degeri"].sum()), "alert-green" if len(green_rx_df) else "")
+with risk3: make_mini_card("🟣 Ek İzlem", str(len(ek_izlem_df)), money_fmt(ek_izlem_df["stok_degeri"].sum()), "alert-purple" if len(ek_izlem_df) else "")
+with risk4: make_mini_card("💰 KKİ Risk", str(len(kki_df)), money_fmt(kki_df["satis_tutari"].sum()), "alert-orange" if len(kki_df) else "")
 
 # Kullanıcı dostu sipariş özeti: teknik ham/kısılmış detaylar ana ekrandan kaldırıldı.
 top_order_names_global = reorder_df.head(3)["urun"].tolist() if not reorder_df.empty else []
@@ -1453,12 +1708,13 @@ st.markdown(
 # ============================================================
 # SAYFALAR
 # ============================================================
-pages = ["🧭 Kontrol Merkezi", "🎯 AYÇA Asistan", "🏠 Sabah Ekranı", "🩺 Sağlık Karnesi", "🛒 Sipariş Motoru", "📦 Ürün Zekası", "🏆 Taşıyan Ürünler", "📉 Sessiz Kâr Kaybı", "💰 Kârlılık", "🧊 Ölü/Yavaş Stok", "📈 Ciro & Tahsilat", "👨‍⚕️ Doktor Intelligence", "🧑‍🤝‍🧑 Hasta Sadakat", "🏥 Kurum Intelligence", "🔐 Reçete Merkezi", "📥 Rapor"]
+pages = ["🧭 Kontrol Merkezi", "🎯 AYÇA Asistan", "🏠 Sabah Ekranı", "🩺 Sağlık Karnesi", "🧯 Risk Merkezi", "🛒 Sipariş Motoru", "📦 Ürün Zekası", "🏆 Taşıyan Ürünler", "📉 Sessiz Kâr Kaybı", "💰 Kârlılık", "🧊 Ölü/Yavaş Stok", "📈 Ciro & Tahsilat", "👨‍⚕️ Doktor Intelligence", "🧑‍🤝‍🧑 Hasta Sadakat", "🏥 Kurum Intelligence", "🔐 Reçete Merkezi", "📥 Rapor"]
 page = st.radio("Bölüm", pages, horizontal=True, label_visibility="collapsed")
 
 product_cols = [
     "barkod", "urun", "urun_grubu", "raf", "stok", "kritik_stok", "psf_final", "stok_degeri",
     "satilan_adet", "satis_tutari", "kar_tutari", "kar_marji", "gunluk_satis_hizi", "stok_bitis_gunu_goster",
+    "risk_segmenti", "risk_tipi", "risk_kaynak", "kki_birim_fark_tl", "kki_tahmini_fark_tl",
     "siparis_segmenti", "siparis_filtre_gecer_mi", "teknik_siparis_onerisi_ham", "siparis_onerisi_ham", "siparis_tahmini_tutar_ham", "siparis_onerisi", "siparis_tahmini_tutar", "siparis_kisit_katsayisi", "abc_sinif", "aksiyon"
 ]
 
@@ -1543,7 +1799,7 @@ elif page == "🎯 AYÇA Asistan":
 
     s1, s2, s3, s4 = st.columns(4)
     with s1: make_mini_card("Önerilen Sipariş", money_fmt(order_budget_info["final_total"]), f"Stokun %{int(order_budget_info['budget_ratio']*100)} bütçesi", "alert-green")
-    with s2: make_mini_card("Acil Sipariş", str(len(urgent_df)), "10+ satış veya ≤15.000 TL filtresi", "alert-red" if len(urgent_df) else "alert-green")
+    with s2: make_mini_card("Acil Sipariş", str(len(urgent_df)), "3+ satış veya <10.000 TL filtresi", "alert-red" if len(urgent_df) else "alert-green")
     with s3: make_mini_card("Sessiz Kâr Kaybı", str(business_insights['summary']['silent_loss_count']), money_fmt(business_insights['summary']['silent_loss_amount']), "alert-orange" if business_insights['summary']['silent_loss_count'] else "alert-green")
     with s4: make_mini_card("Hareketsiz Sermaye", money_fmt(business_insights['summary']['lost_candidate_value']), f"{business_insights['summary']['lost_candidate_count']} ürün", "alert-purple" if business_insights['summary']['lost_candidate_count'] else "alert-green")
 
@@ -1934,8 +2190,44 @@ elif page == "🏥 Kurum Intelligence":
         st.markdown('<div class="section-title">Kurum Detay Tablosu</div>', unsafe_allow_html=True)
         st.dataframe(kurum_df, use_container_width=True, hide_index=True)
 
+elif page == "🧯 Risk Merkezi":
+    st.markdown('<div class="section-title">🧯 Eczacı Risk Merkezi</div>', unsafe_allow_html=True)
+    st.caption("Kırmızı/yeşil reçete, TİTCK ek izlem ve KKİ risklerini ürün bazlı satış-stok verisiyle birleştirir.")
+
+    a1, a2, a3, a4 = st.columns(4)
+    with a1: make_mini_card("🔴 Kırmızı Reçete", str(len(red_rx_df)), f"Stok: {money_fmt(red_rx_df['stok_degeri'].sum())}", "alert-red" if len(red_rx_df) else "")
+    with a2: make_mini_card("🟢 Yeşil Reçete", str(len(green_rx_df)), f"Son dönem satış: {money_fmt(green_rx_df['satis_tutari'].sum())}", "alert-green" if len(green_rx_df) else "")
+    with a3: make_mini_card("🟣 Ek İzlem", str(len(ek_izlem_df)), f"Stok: {money_fmt(ek_izlem_df['stok_degeri'].sum())}", "alert-purple" if len(ek_izlem_df) else "")
+    with a4: make_mini_card("💰 KKİ Risk", str(len(kki_df)), f"Tahmini fark: {money_fmt(kki_df.get('kki_tahmini_fark_tl', pd.Series(dtype=float)).sum())}", "alert-orange" if len(kki_df) else "")
+
+    if risk_summary_df.empty:
+        st.info("Yüklenen eczane verisinde risk listeleriyle eşleşen ürün bulunamadı. Barkodlu risk master yüklersen eşleşme daha net olur.")
+    else:
+        show_summary = risk_summary_df.copy()
+        for col in ["Stok Değeri", "Satış Tutarı", "Tahmini KKİ Farkı"]:
+            if col in show_summary.columns:
+                show_summary[col] = show_summary[col].map(money_fmt)
+        st.markdown('<div class="section-title">Risk Özeti</div>', unsafe_allow_html=True)
+        st.dataframe(show_summary, use_container_width=True, hide_index=True)
+
+    tabs_risk = st.tabs(["🔴 Kırmızı", "🟢 Yeşil", "🟣 Ek İzlem", "💰 KKİ", "📋 Tüm Riskler"])
+    risk_cols_show = [c for c in ["barkod", "urun", "risk_segmenti", "risk_tipi", "risk_kaynak", "stok", "stok_degeri", "satilan_adet", "satis_tutari", "birim_satis", "kki_birim_fark_tl", "kki_tahmini_fark_tl", "siparis_segmenti", "aksiyon"] if c in product_master.columns]
+    with tabs_risk[0]:
+        st.dataframe(red_rx_df[risk_cols_show], use_container_width=True, hide_index=True)
+    with tabs_risk[1]:
+        st.dataframe(green_rx_df[risk_cols_show], use_container_width=True, hide_index=True)
+    with tabs_risk[2]:
+        st.dataframe(ek_izlem_df[risk_cols_show], use_container_width=True, hide_index=True)
+    with tabs_risk[3]:
+        st.dataframe(kki_df[risk_cols_show], use_container_width=True, hide_index=True)
+        if not kki_df.empty:
+            fig = px.bar(kki_df.head(15), x="urun", y="kki_tahmini_fark_tl", title="Tahmini KKİ Farkı - İlk 15 Ürün")
+            st.plotly_chart(apply_plot_theme(fig, height=430), use_container_width=True)
+    with tabs_risk[4]:
+        st.dataframe(risk_df[risk_cols_show], use_container_width=True, hide_index=True)
+
 elif page == "🔐 Reçete Merkezi":
-    st.markdown('<div class="section-title">🔐 Reçete Merkezi - Premium Roadmap</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-title">🔐 Kontrollü Reçete Merkezi</div>', unsafe_allow_html=True)
     st.caption("Bu ekran veri güvenliği ve mevzuat hassasiyeti nedeniyle hasta tanısı veya açık hassas sağlık verisi işlemeden, sadece eczane operasyon riski ve stok karar desteği olarak kurgulanmalıdır.")
     st.markdown(
         """
@@ -1957,7 +2249,7 @@ elif page == "📥 Rapor":
         patient_loyalty.get("frequency"), patient_loyalty.get("lost"), business_insights
     )
     st.download_button(
-        "📥 AYÇA Insight V8.2 SaaS Raporunu İndir",
+        "📥 AYÇA Insight V9.0 Risk Merkezi Raporunu İndir",
         data=report,
         file_name=f"ayca_insight_v8_1_saas_rapor_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
