@@ -1,5 +1,5 @@
 # ============================================================
-# AYÇA Insight V10.2 Executive Dashboard - Kontrol Merkezi + Asistan + Ürün Fırsatları
+# AYÇA Insight V10.4 Executive Dashboard Stabilized - Kontrol Merkezi + Asistan + Ürün Fırsatları
 # ------------------------------------------------------------
 # Zorunlu / Önerilen dosyalar:
 # 1) Envanter Exceli
@@ -43,7 +43,7 @@ import streamlit as st
 # STREAMLIT AYARI
 # ============================================================
 st.set_page_config(
-    page_title="AYÇA Insight V10.2 Executive Dashboard",
+    page_title="AYÇA Insight V10.4 Executive Dashboard Stabilized",
     page_icon="💊",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -332,58 +332,213 @@ def show_basic_info(message: str):
 
 
 def show_demo_auth_screen():
+    """Tam ekran ama Streamlit widget uyumlu giriş ekranı.
+
+    Not: Streamlit widget'ları açık HTML div'lerinin içine güvenilir şekilde yerleşmediği için
+    giriş formu st.columns ile ayrıldı. Böylece sağ panel boş kalmaz ve form her ortamda görünür.
+    """
     st.markdown(
         """
-        <div class="login-shell">
-            <div class="login-left">
-                <div class="login-brand">AYÇA <span>Insight</span></div>
-                <div class="login-headline">Eczanenizin dijital operasyon merkezi</div>
-                <div class="login-sub">
+        <style>
+        [data-testid="stSidebar"] {display:none;}
+        .block-container {padding-top:0.6rem; max-width:1720px;}
+        .login-clean-shell {
+            min-height: calc(100vh - 34px);
+            display:grid;
+            grid-template-columns:1.08fr .92fr;
+            gap:28px;
+            align-items:center;
+            padding:24px 8px 34px 8px;
+        }
+        .login-clean-left {
+            min-height:640px;
+            border-radius:36px;
+            padding:44px;
+            color:#FFFFFF;
+            background:
+                radial-gradient(circle at 8% 8%, rgba(255,255,255,.28), rgba(255,255,255,0) 34%),
+                linear-gradient(135deg,#0F172A 0%,#1E3A8A 54%,#2563EB 100%);
+            box-shadow:0 34px 90px rgba(37,99,235,.24);
+            position:relative;
+            overflow:hidden;
+        }
+        .login-clean-left:after {
+            content:"";
+            position:absolute;
+            width:440px;
+            height:440px;
+            right:-140px;
+            top:-140px;
+            border-radius:999px;
+            background:radial-gradient(circle,rgba(255,255,255,.24),rgba(255,255,255,0));
+        }
+        .login-clean-brand {
+            position:relative;
+            z-index:2;
+            font-size:42px;
+            font-weight:950;
+            letter-spacing:-1.3px;
+            color:#FFFFFF;
+            margin-bottom:14px;
+        }
+        .login-clean-brand span {
+            font-size:21px;
+            font-weight:850;
+            color:#BFDBFE;
+            margin-left:8px;
+        }
+        .login-welcome {
+            position:relative;
+            z-index:2;
+            margin-top:54px;
+            font-size:18px;
+            color:#DBEAFE;
+            font-weight:850;
+        }
+        .login-clean-headline {
+            position:relative;
+            z-index:2;
+            margin-top:12px;
+            max-width:720px;
+            font-size:44px;
+            line-height:1.08;
+            font-weight:950;
+            letter-spacing:-1.5px;
+            color:#FFFFFF;
+        }
+        .login-clean-sub {
+            position:relative;
+            z-index:2;
+            max-width:680px;
+            margin-top:18px;
+            font-size:16px;
+            line-height:1.65;
+            color:#DBEAFE;
+        }
+        .login-clean-features {
+            position:relative;
+            z-index:2;
+            display:grid;
+            grid-template-columns:repeat(2,minmax(0,1fr));
+            gap:12px;
+            margin-top:34px;
+            max-width:760px;
+        }
+        .login-clean-feature {
+            background:rgba(255,255,255,.12);
+            border:1px solid rgba(255,255,255,.20);
+            border-radius:18px;
+            padding:14px 15px;
+            color:#FFFFFF;
+            font-weight:850;
+            font-size:14px;
+            backdrop-filter:blur(10px);
+        }
+        .login-clean-version {
+            position:relative;
+            z-index:2;
+            display:inline-flex;
+            margin-top:36px;
+            background:rgba(255,255,255,.13);
+            border:1px solid rgba(255,255,255,.22);
+            color:#FFFFFF;
+            border-radius:999px;
+            padding:10px 14px;
+            font-size:13px;
+            font-weight:900;
+        }
+        .login-form-card {
+            background:#FFFFFF;
+            border:1px solid #E2E8F0;
+            border-radius:34px;
+            padding:34px;
+            box-shadow:0 30px 80px rgba(15,23,42,.09);
+        }
+        .login-form-title {
+            font-size:26px;
+            font-weight:950;
+            letter-spacing:-.6px;
+            color:#0F172A;
+            margin-bottom:6px;
+        }
+        .login-form-sub {
+            font-size:14px;
+            color:#64748B;
+            line-height:1.55;
+            margin-bottom:18px;
+        }
+        @media (max-width:980px) {
+            .login-clean-shell {grid-template-columns:1fr; padding:8px 0 24px 0;}
+            .login-clean-left {min-height:auto; padding:28px;}
+            .login-clean-headline {font-size:32px;}
+            .login-clean-features {grid-template-columns:1fr;}
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    left, right = st.columns([1.08, 0.92], gap="large")
+
+    with left:
+        st.markdown(
+            """
+            <div class="login-clean-left">
+                <div class="login-clean-brand">AYÇA <span>Insight</span></div>
+                <div class="login-welcome">Hoş geldiniz 👋</div>
+                <div class="login-clean-headline">Eczanenizin dijital operasyon merkezi</div>
+                <div class="login-clean-sub">
                     Stok, kârlılık, reçete süreçleri ve finansal riskleri tek ekranda yönetin.
                     AYÇA Insight, TEBEOS verilerinizi karar destek katmanına dönüştürür.
                 </div>
-                <div class="login-feature-grid">
-                    <div class="login-feature">✓ Sipariş karar desteği</div>
-                    <div class="login-feature">✓ KKİ risk takibi</div>
-                    <div class="login-feature">✓ Kırmızı / Yeşil reçete yönetimi</div>
-                    <div class="login-feature">✓ Kârlılık ve tahsilat analizi</div>
-                    <div class="login-feature">✓ Stok ve sermaye kontrolü</div>
-                    <div class="login-feature">✓ Yapay zekâ destekli içgörüler</div>
+                <div class="login-clean-features">
+                    <div class="login-clean-feature">✓ Sipariş karar desteği</div>
+                    <div class="login-clean-feature">✓ KKİ risk takibi</div>
+                    <div class="login-clean-feature">✓ Kırmızı / Yeşil reçete yönetimi</div>
+                    <div class="login-clean-feature">✓ Kârlılık ve tahsilat analizi</div>
+                    <div class="login-clean-feature">✓ Stok ve sermaye kontrolü</div>
+                    <div class="login-clean-feature">✓ Yapay zekâ destekli içgörüler</div>
                 </div>
-                <div class="login-version">AYÇA Insight V10.2 · Executive Dashboard</div>
+                <div class="login-clean-version">AYÇA Insight V10.4 · Executive Dashboard</div>
             </div>
-            <div class="login-right">
-                <div class="login-card-title">Hoş geldiniz 👋</div>
-                <div class="login-card-sub">AYÇA Insight'a giriş yaparak eczanenizin sabah brifingini ve operasyon merkezini açın.</div>
-        """,
-        unsafe_allow_html=True,
-    )
+            """,
+            unsafe_allow_html=True,
+        )
 
-    username = st.text_input("Kullanıcı adı", value="premium")
-    password = st.text_input("Şifre", value="premium2026", type="password")
-    if st.button("🚀 Giriş Yap", use_container_width=True, type="primary"):
-        record = DEMO_USERS.get(username.strip().lower())
-        if record and password == record["password"]:
-            st.session_state["authenticated"] = True
-            st.session_state["auth_user"] = record["name"]
-            st.session_state["auth_pharmacy"] = record["pharmacy"]
-            st.session_state["membership"] = record["membership"]
-            safe_rerun()
-        else:
-            st.error("Kullanıcı adı veya şifre hatalı. Premium: premium / premium2026")
-
-    st.markdown(
-        """
-                <div class="demo-box">
-                    <b>Demo hesaplar</b><br>
-                    Premium: <b>premium</b> / <b>premium2026</b><br>
-                    Basic: <b>basic</b> / <b>basic2026</b>
-                </div>
+    with right:
+        st.markdown(
+            """
+            <div class="login-form-card">
+                <div class="login-form-title">Giriş bilgileri</div>
+                <div class="login-form-sub">AYÇA Insight'a giriş yaparak sabah brifingini ve operasyon merkezini açın.</div>
             </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+            """,
+            unsafe_allow_html=True,
+        )
+        username = st.text_input("Kullanıcı adı", value="premium")
+        password = st.text_input("Şifre", value="premium2026", type="password")
+        if st.button("🚀 Giriş Yap", use_container_width=True, type="primary"):
+            record = DEMO_USERS.get(username.strip().lower())
+            if record and password == record["password"]:
+                st.session_state["authenticated"] = True
+                st.session_state["auth_user"] = record["name"]
+                st.session_state["auth_pharmacy"] = record["pharmacy"]
+                st.session_state["membership"] = record["membership"]
+                safe_rerun()
+            else:
+                st.error("Kullanıcı adı veya şifre hatalı. Premium: premium / premium2026")
+
+        st.markdown(
+            """
+            <div class="demo-box">
+                <b>Demo hesaplar</b><br>
+                Premium: <b>premium</b> / <b>premium2026</b><br>
+                Basic: <b>basic</b> / <b>basic2026</b>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
 
 if "authenticated" not in st.session_state:
     st.session_state["authenticated"] = False
@@ -1664,7 +1819,7 @@ if inventory_file is None or product_file is None or sales_file is None:
         f"""
         <div class="ayca-header">
             <div class="ayca-title">
-                <h1>AYÇA Insight V10.2 Executive Dashboard</h1>
+                <h1>AYÇA Insight V10.4 Executive Dashboard Stabilized</h1>
                 <p>{eczane_adi} · Üç Excel dosyasını yükle: envanter, ürün bazında toplamlar, satış hareketleri.</p>
             </div>
             <div class="header-pill">Dosya bekleniyor</div>
@@ -1925,27 +2080,60 @@ elif page == "📦 Operasyon Merkezi":
 
 elif page == "💰 Finans Merkezi":
     st.markdown('<div class="section-title">💰 Finans Merkezi</div>', unsafe_allow_html=True)
+
+    # Streamlit Cloud ortamında px değişkeni beklenmedik şekilde scope dışı kalırsa
+    # finans ekranı kırılmasın diye bu bölümde lokal ve güvenli import kullanıyoruz.
+    try:
+        import plotly.express as _px_finance
+    except Exception:
+        _px_finance = None
+
     fin_tabs = st.tabs(["Karlılık", "Sessiz Kâr Kaybı", "Ciro & Tahsilat"])
+
     with fin_tabs[0]:
         k1, k2, k3, k4 = st.columns(4)
-        with k1: make_metric_card("Ciro", money_fmt(current_stats["ciro"]), period_label, ciro_trend, ciro_class)
-        with k2: make_metric_card("Brüt Kâr", money_fmt(current_stats["kar"]), "Satış hareketleri", profit_trend, profit_class)
-        with k3: make_metric_card("Marj", pct_fmt(current_stats["marj"]), "Brüt kâr / ciro")
-        with k4: make_metric_card("Ortalama Sepet", money_fmt(current_stats["ortalama_sepet"]), f"{current_stats['islem']} işlem")
-        fig = px.line(daily_df, x="gun", y=["ciro", "kar"], markers=True, title="Günlük Ciro ve Kâr")
-        st.plotly_chart(apply_plot_theme(fig, height=420), use_container_width=True)
+        with k1:
+            make_metric_card("Ciro", money_fmt(current_stats.get("ciro", 0)), period_label, ciro_trend, ciro_class)
+        with k2:
+            make_metric_card("Brüt Kâr", money_fmt(current_stats.get("kar", 0)), "Satış hareketleri", profit_trend, profit_class)
+        with k3:
+            make_metric_card("Marj", pct_fmt(current_stats.get("marj", 0)), "Brüt kâr / ciro", margin_trend, margin_class)
+        with k4:
+            make_metric_card("Ortalama Sepet", money_fmt(current_stats.get("ortalama_sepet", 0)), f"{current_stats.get('islem', 0)} işlem")
+
+        if _px_finance is not None and daily_df is not None and not daily_df.empty:
+            fig = _px_finance.line(daily_df, x="gun", y=["ciro", "kar"], markers=True, title="Günlük Ciro ve Kâr")
+            st.plotly_chart(apply_plot_theme(fig, height=420), use_container_width=True)
+        else:
+            st.info("Günlük ciro/kâr grafiği için yeterli veri bulunamadı.")
+
     with fin_tabs[1]:
-        silent_cols = [c for c in product_cols + ["tahmini_sessiz_kayip"] if c in business_insights.get("silent_loss", pd.DataFrame()).columns]
-        st.dataframe(business_insights.get("silent_loss", pd.DataFrame())[silent_cols].head(500), use_container_width=True, hide_index=True)
+        silent_df = business_insights.get("silent_loss", pd.DataFrame())
+        silent_cols = [c for c in product_cols + ["tahmini_sessiz_kayip"] if c in silent_df.columns]
+        if not silent_df.empty and silent_cols:
+            st.dataframe(silent_df[silent_cols].head(500), use_container_width=True, hide_index=True)
+        else:
+            st.info("Sessiz kâr kaybı için uygun ürün verisi bulunamadı.")
+
     with fin_tabs[2]:
         c1, c2 = st.columns(2)
         with c1:
-            fig = px.line(daily_df, x="gun", y="ciro", markers=True, title="Günlük Ciro")
-            st.plotly_chart(apply_plot_theme(fig), use_container_width=True)
+            if _px_finance is not None and daily_df is not None and not daily_df.empty:
+                fig = _px_finance.line(daily_df, x="gun", y="ciro", markers=True, title="Günlük Ciro")
+                st.plotly_chart(apply_plot_theme(fig), use_container_width=True)
+            else:
+                st.info("Günlük ciro grafiği için yeterli veri bulunamadı.")
         with c2:
-            fig = px.bar(payment_df, x="tahsilat", y="ciro", title="Tahsilat Tipine Göre Ciro")
-            st.plotly_chart(apply_plot_theme(fig), use_container_width=True)
-        st.dataframe(payment_df, use_container_width=True, hide_index=True)
+            if _px_finance is not None and payment_df is not None and not payment_df.empty and {"tahsilat", "ciro"}.issubset(payment_df.columns):
+                fig = _px_finance.bar(payment_df, x="tahsilat", y="ciro", title="Tahsilat Tipine Göre Ciro")
+                st.plotly_chart(apply_plot_theme(fig), use_container_width=True)
+            else:
+                st.info("Tahsilat tipi grafiği için yeterli veri bulunamadı.")
+
+        if payment_df is not None and not payment_df.empty:
+            st.dataframe(payment_df, use_container_width=True, hide_index=True)
+        else:
+            st.info("Tahsilat özeti için veri bulunamadı.")
 
 elif page == "👥 Hasta & Reçete Merkezi":
     st.markdown('<div class="section-title">👥 Hasta & Reçete Merkezi</div>', unsafe_allow_html=True)
@@ -2487,7 +2675,7 @@ elif page == "📊 Raporlar":
         patient_loyalty.get("frequency"), patient_loyalty.get("lost"), business_insights
     )
     st.download_button(
-        "📥 AYÇA Insight V10.2 Executive Dashboard Raporunu İndir",
+        "📥 AYÇA Insight V10.4 Executive Dashboard Stabilized Raporunu İndir",
         data=report,
         file_name=f"ayca_insight_v9_2_kki_risk_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
