@@ -1,5 +1,5 @@
 # ============================================================
-# AYÇA Insight V8.0 - Asistan + Sağlık Karnesi + Ürün Fırsatları Sürümü
+# AYÇA Insight V8.1 SaaS - Kontrol Merkezi + Asistan + Ürün Fırsatları
 # ------------------------------------------------------------
 # Zorunlu / Önerilen dosyalar:
 # 1) Envanter Exceli
@@ -43,7 +43,7 @@ import streamlit as st
 # STREAMLIT AYARI
 # ============================================================
 st.set_page_config(
-    page_title="AYÇA Insight V8.0",
+    page_title="AYÇA Insight V8.1 SaaS",
     page_icon="💊",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -98,6 +98,22 @@ st.markdown(
     .health-head {display:flex; justify-content:space-between; color:#334155; font-weight:900; font-size:13px; margin-bottom:6px;}
     .health-bar-bg {width:100%; height:10px; background:#E2E8F0; border-radius:999px; overflow:hidden;}
     .health-bar-fill {height:10px; border-radius:999px; background:linear-gradient(90deg,#2563EB,#10B981);}
+
+    .saas-shell {background:linear-gradient(135deg,#0F172A 0%,#1E3A8A 48%,#2563EB 100%); border-radius:30px; padding:22px; box-shadow:0 22px 60px rgba(37,99,235,.20); margin:12px 0 18px 0; color:white; overflow:hidden; position:relative;}
+    .saas-shell:after {content:""; position:absolute; width:360px; height:360px; right:-120px; top:-150px; background:radial-gradient(circle,rgba(255,255,255,.22),rgba(255,255,255,0)); border-radius:999px;}
+    .saas-hero-title {font-size:28px; font-weight:950; letter-spacing:-.7px; margin-bottom:8px; color:white;}
+    .saas-hero-sub {font-size:14px; line-height:1.58; color:#DBEAFE; max-width:880px;}
+    .saas-badge {display:inline-block; background:rgba(255,255,255,.14); border:1px solid rgba(255,255,255,.22); border-radius:999px; padding:7px 11px; font-size:12px; font-weight:900; margin:0 6px 8px 0; color:white;}
+    .saas-grid {display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:14px; margin:14px 0 18px 0;}
+    .saas-tile {background:rgba(255,255,255,.92); border:1px solid #E2E8F0; border-radius:22px; padding:17px; box-shadow:0 12px 30px rgba(15,23,42,.06); min-height:132px;}
+    .saas-tile-k {font-size:12px; color:#64748B; font-weight:950; text-transform:uppercase; letter-spacing:.45px; margin-bottom:9px;}
+    .saas-tile-v {font-size:26px; color:#0F172A; font-weight:950; letter-spacing:-.5px; margin-bottom:7px;}
+    .saas-tile-n {font-size:13px; color:#64748B; line-height:1.45;}
+    .module-grid {display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px; margin:12px 0 18px 0;}
+    .module-card {background:#FFFFFF; border:1px solid #E2E8F0; border-radius:22px; padding:18px; box-shadow:0 12px 30px rgba(15,23,42,.055); min-height:150px;}
+    .module-title {font-size:17px; font-weight:950; color:#0F172A; margin-bottom:8px;}
+    .module-desc {font-size:13px; color:#64748B; line-height:1.55;}
+    @media (max-width:1000px){.saas-grid{grid-template-columns:repeat(2,minmax(0,1fr));}.module-grid{grid-template-columns:1fr;}}
     @media (max-width:1000px){.exec-grid{grid-template-columns:1fr;}.ayca-header{display:block}.header-pill{display:inline-block;margin-top:10px}}
     </style>
     """,
@@ -148,7 +164,7 @@ def show_demo_auth_screen():
         st.markdown(
             """
             <div class="ai-card">
-                <div class="ai-title">AYÇA Insight V8.0</div>
+                <div class="ai-title">AYÇA Insight V8.1 SaaS</div>
                 <div class="ai-text">
                 Bu sürüm üç TEBEOS Excel çıktısını birlikte okur: <b>Envanter</b>, <b>Ürün Bazında Toplamlar</b> ve <b>Satış Hareketleri</b>.
                 Böylece ürün bazlı satış hızı, stok bitiş günü, sipariş tavsiyesi, ölü stok ve kârlılık motoru aktif olur.
@@ -1120,7 +1136,7 @@ if st.sidebar.button("Çıkış Yap", use_container_width=True):
     safe_rerun()
 
 st.sidebar.title("💊 AYÇA Insight")
-st.sidebar.caption("V8.0 · Asistan + Sağlık Karnesi + Ürün/Doktor/Hasta Zekası")
+st.sidebar.caption("V8.1 SaaS · Kontrol Merkezi + Asistan + Ürün/Doktor/Hasta Zekası")
 eczane_adi = st.sidebar.text_input("Eczane Adı", value="İdil Eczanesi")
 kullanici_adi = st.sidebar.text_input("Kullanıcı", value="Abdullah Bey")
 
@@ -1161,7 +1177,7 @@ if inventory_file is None or product_file is None or sales_file is None:
         f"""
         <div class="ayca-header">
             <div class="ayca-title">
-                <h1>AYÇA Insight V8.0</h1>
+                <h1>AYÇA Insight V8.1 SaaS</h1>
                 <p>{eczane_adi} · Üç Excel dosyasını yükle: envanter, ürün bazında toplamlar, satış hareketleri.</p>
             </div>
             <div class="header-pill">Dosya bekleniyor</div>
@@ -1273,10 +1289,25 @@ st.markdown(
     f"""
     <div class="ayca-header">
         <div class="ayca-title">
-            <h1>AYÇA Insight V8.0</h1>
+            <h1>AYÇA Insight V8.1 SaaS</h1>
             <p>{eczane_adi} · {selected_period} · Gün hesabı: {analysis_days} gün · {today_str}</p>
         </div>
         <div class="header-pill">AYÇA Ürün Puanı: {score}/100 · {score_status(score)}</div>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
+
+st.markdown(
+    f"""
+    <div class="saas-shell">
+        <div>
+            <span class="saas-badge">SaaS Kontrol Merkezi</span>
+            <span class="saas-badge">{get_membership()} Plan</span>
+            <span class="saas-badge">3 Dosyalı TEBEOS Motoru</span>
+        </div>
+        <div class="saas-hero-title">Eczanenin bugün ne yapması gerektiğini tek ekranda gösterir.</div>
+        <div class="saas-hero-sub">AYÇA Insight; satış, stok, kârlılık, tahsilat, doktor, kurum ve hasta sadakat verilerini günlük aksiyonlara dönüştüren yapay zekâ destekli eczane karar destek platformudur.</div>
     </div>
     """,
     unsafe_allow_html=True,
@@ -1368,7 +1399,7 @@ st.markdown(
 # ============================================================
 # SAYFALAR
 # ============================================================
-pages = ["🎯 AYÇA Asistan", "🏠 Sabah Ekranı", "🩺 Sağlık Karnesi", "🛒 Sipariş Motoru", "📦 Ürün Zekası", "🏆 Taşıyan Ürünler", "📉 Sessiz Kâr Kaybı", "💰 Kârlılık", "🧊 Ölü/Yavaş Stok", "📈 Ciro & Tahsilat", "👨‍⚕️ Doktor Intelligence", "🧑‍🤝‍🧑 Hasta Sadakat", "🏥 Kurum Intelligence", "📥 Rapor"]
+pages = ["🧭 Kontrol Merkezi", "🎯 AYÇA Asistan", "🏠 Sabah Ekranı", "🩺 Sağlık Karnesi", "🛒 Sipariş Motoru", "📦 Ürün Zekası", "🏆 Taşıyan Ürünler", "📉 Sessiz Kâr Kaybı", "💰 Kârlılık", "🧊 Ölü/Yavaş Stok", "📈 Ciro & Tahsilat", "👨‍⚕️ Doktor Intelligence", "🧑‍🤝‍🧑 Hasta Sadakat", "🏥 Kurum Intelligence", "🔐 Reçete Merkezi", "📥 Rapor"]
 page = st.radio("Bölüm", pages, horizontal=True, label_visibility="collapsed")
 
 product_cols = [
@@ -1378,7 +1409,72 @@ product_cols = [
 ]
 
 
-if page == "🎯 AYÇA Asistan":
+if page == "🧭 Kontrol Merkezi":
+    st.markdown('<div class="section-title">🧭 SaaS Kontrol Merkezi</div>', unsafe_allow_html=True)
+    st.caption("Bu bölüm eczacının uygulamayı açtığında ilk görmesi gereken yönetici ekranıdır: skor, risk, fırsat ve aksiyon.")
+
+    st.markdown(
+        f"""
+        <div class="saas-grid">
+            <div class="saas-tile">
+                <div class="saas-tile-k">Eczane Sağlık Skoru</div>
+                <div class="saas-tile-v">{score}/100</div>
+                <div class="saas-tile-n">Durum: <b>{score_status(score)}</b>. En düşük alan: <b>{min(score_items, key=score_items.get)}</b>.</div>
+            </div>
+            <div class="saas-tile">
+                <div class="saas-tile-k">Bugünkü Öncelik</div>
+                <div class="saas-tile-v">{len(actions)}</div>
+                <div class="saas-tile-n">AYÇA aksiyon üretti. İlk aksiyon: <b>{actions[0] if actions else 'Kritik aksiyon yok'}</b></div>
+            </div>
+            <div class="saas-tile">
+                <div class="saas-tile-k">Sipariş Bütçesi</div>
+                <div class="saas-tile-v">{money_fmt(order_budget_info['final_total'])}</div>
+                <div class="saas-tile-n">Stok değerinin %{int(order_budget_info['budget_ratio']*100)} oranına göre bütçeli öneri.</div>
+            </div>
+            <div class="saas-tile">
+                <div class="saas-tile-k">Veri Kalitesi</div>
+                <div class="saas-tile-v">{pct_fmt(match_ratio)}</div>
+                <div class="saas-tile-n">Ürün satış ve envanter barkod eşleşme oranı.</div>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    c1, c2 = st.columns([1.15, .85])
+    with c1:
+        st.markdown('<div class="section-title">Yönetici Aksiyonları</div>', unsafe_allow_html=True)
+        for item in actions[:6]:
+            st.markdown(f"<div class='exec-list-item'>{item}</div>", unsafe_allow_html=True)
+    with c2:
+        st.markdown('<div class="section-title">Sağlık Karnesi</div>', unsafe_allow_html=True)
+        for k, v in score_items.items():
+            st.markdown(
+                f"<div class='health-row'><div class='health-head'><span>{k}</span><span>{v}/100</span></div><div class='health-bar-bg'><div class='health-bar-fill' style='width:{v}%;'></div></div></div>",
+                unsafe_allow_html=True,
+            )
+
+    c3, c4 = st.columns(2)
+    with c3:
+        fig = px.line(daily_df, x="gun", y="ciro", markers=True, title="Günlük Ciro Trendi")
+        st.plotly_chart(apply_plot_theme(fig, height=420), use_container_width=True)
+    with c4:
+        fig = px.bar(abc_df, x="abc_sinif", y="ciro", title="ABC Ürün Sınıflaması - Ciro")
+        st.plotly_chart(apply_plot_theme(fig, height=420), use_container_width=True)
+
+    st.markdown('<div class="section-title">Premium Modül Vitrini</div>', unsafe_allow_html=True)
+    st.markdown(
+        """
+        <div class="module-grid">
+            <div class="module-card"><div class="module-title">🔴 Kırmızı Reçete Merkezi</div><div class="module-desc">Kritik reçete gruplarında stok, hareket, risk ve olağandışı tüketim takibi için premium operasyon ekranı.</div></div>
+            <div class="module-card"><div class="module-title">🟢 Yeşil Reçete Merkezi</div><div class="module-desc">Yeşil reçete ürünlerinde tüketim, stok seviyesi, sipariş ihtiyacı ve düzenli kullanım davranışlarını izler.</div></div>
+            <div class="module-card"><div class="module-title">📄 Raporlu Hasta Merkezi</div><div class="module-desc">Rapor bitiş yaklaşımı, düzenli ilaç yenileme ihtimali ve stok hazırlığı için karar destek katmanı.</div></div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+elif page == "🎯 AYÇA Asistan":
     st.markdown('<div class="section-title">🎯 AYÇA Asistan</div>', unsafe_allow_html=True)
     st.markdown(
         f"""
@@ -1783,6 +1879,21 @@ elif page == "🏥 Kurum Intelligence":
         st.markdown('<div class="section-title">Kurum Detay Tablosu</div>', unsafe_allow_html=True)
         st.dataframe(kurum_df, use_container_width=True, hide_index=True)
 
+elif page == "🔐 Reçete Merkezi":
+    st.markdown('<div class="section-title">🔐 Reçete Merkezi - Premium Roadmap</div>', unsafe_allow_html=True)
+    st.caption("Bu ekran veri güvenliği ve mevzuat hassasiyeti nedeniyle hasta tanısı veya açık hassas sağlık verisi işlemeden, sadece eczane operasyon riski ve stok karar desteği olarak kurgulanmalıdır.")
+    st.markdown(
+        """
+        <div class="module-grid">
+            <div class="module-card alert-red"><div class="module-title">🔴 Kırmızı Reçete Takip Merkezi</div><div class="module-desc">Kırmızı reçeteli ürünlerde kritik stok, satış ritmi, olağandışı hareket ve sipariş hazırlığı takibi.</div></div>
+            <div class="module-card alert-green"><div class="module-title">🟢 Yeşil Reçete Takip Merkezi</div><div class="module-desc">Yeşil reçeteli ürünlerde stok yeterliliği, düzenli tüketim ve dönemsel sipariş ihtiyacı analizi.</div></div>
+            <div class="module-card alert-blue"><div class="module-title">📄 Raporlu Hasta / Düzenli İlaç Merkezi</div><div class="module-desc">Rapor yenileme ihtimali, düzenli ürün hazırlığı ve stok yok nedeniyle hasta kaybı riskini azaltma.</div></div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+    make_mini_card("Not", "Veri güvenliği", "Bu modül KVKK uyumlu şekilde, hasta adı/TC ve tanı verisini ürünleştirmeden tasarlanmalıdır.", "alert-purple")
+
 elif page == "📥 Rapor":
     st.markdown('<div class="section-title">Excel Raporu</div>', unsafe_allow_html=True)
     report = create_excel_report(
@@ -1791,9 +1902,9 @@ elif page == "📥 Rapor":
         patient_loyalty.get("frequency"), patient_loyalty.get("lost"), business_insights
     )
     st.download_button(
-        "📥 AYÇA Insight V8.0 Raporunu İndir",
+        "📥 AYÇA Insight V8.1 SaaS Raporunu İndir",
         data=report,
-        file_name=f"ayca_insight_v8_0_rapor_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx",
+        file_name=f"ayca_insight_v8_1_saas_rapor_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         use_container_width=True,
     )
