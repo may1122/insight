@@ -1727,6 +1727,13 @@ product_master, order_budget_info = apply_order_budget(product_master, order_bud
 product_master = apply_risk_reference(product_master, risk_reference_df)
 current_stats = summarize_sales(period_df)
 previous_stats = summarize_sales(prev_df)
+
+# Güvenli trend değişkenleri: V10.1 sade ekranında kullanılan kartlar için
+# önceki dönem kıyaslarını burada merkezi olarak üretiyoruz.
+ciro_trend, ciro_class = rate_fmt(current_stats.get("ciro", 0), previous_stats.get("ciro", 0))
+profit_trend, profit_class = rate_fmt(current_stats.get("kar", 0), previous_stats.get("kar", 0))
+margin_trend, margin_class = rate_fmt(current_stats.get("marj", 0), previous_stats.get("marj", 0))
+
 score, score_items, score_weights = health_score(product_master, current_stats, previous_stats)
 
 # Özet tablolar
@@ -1791,7 +1798,7 @@ st.markdown(
     f"""
     <div class="ayca-header">
         <div class="ayca-title">
-            <h1>AYÇA Insight V10.1</h1>
+            <h1>AYÇA Insight V10.3</h1>
             <p>{eczane_adi} · {period_label} · Gün hesabı: {analysis_days} gün · {today_str}</p>
         </div>
         <div class="header-pill">{get_membership()} Plan · Sağlık Skoru {score}/100</div>
