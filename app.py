@@ -1,5 +1,5 @@
 # ============================================================
-# AYÇA Insight V9.2 KKİ Risk Merkezi - Kontrol Merkezi + Asistan + Ürün Fırsatları
+# AYÇA Insight V9.3 KKİ Risk Merkezi - Kontrol Merkezi + Asistan + Ürün Fırsatları
 # ------------------------------------------------------------
 # Zorunlu / Önerilen dosyalar:
 # 1) Envanter Exceli
@@ -43,7 +43,7 @@ import streamlit as st
 # STREAMLIT AYARI
 # ============================================================
 st.set_page_config(
-    page_title="AYÇA Insight V9.2 KKİ Risk Merkezi",
+    page_title="AYÇA Insight V9.3 KKİ Risk Merkezi",
     page_icon="💊",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -164,7 +164,7 @@ def show_demo_auth_screen():
         st.markdown(
             """
             <div class="ai-card">
-                <div class="ai-title">AYÇA Insight V9.2 KKİ Risk Merkezi</div>
+                <div class="ai-title">AYÇA Insight V9.3 KKİ Risk Merkezi</div>
                 <div class="ai-text">
                 Bu sürüm üç TEBEOS Excel çıktısını birlikte okur: <b>Envanter</b>, <b>Ürün Bazında Toplamlar</b> ve <b>Satış Hareketleri</b>.
                 Böylece ürün bazlı satış hızı, stok bitiş günü, sipariş tavsiyesi, ölü stok ve kârlılık motoru aktif olur.
@@ -825,11 +825,11 @@ def make_product_master(inv_df: pd.DataFrame, prod_df: pd.DataFrame, analysis_da
 
     # Teknik ham öneri: matematiksel olarak stok hedefinin altında kalan tüm ürünler.
     # Eczacı filtresi: pahalı ve seyrek satılan özel/akıllı ilaçlar otomatik acil siparişe düşmesin.
-    # Kural: Ürün bu analiz döneminde 3 adetten fazla sattıysa VEYA birim satış fiyatı 10.000 TL altındaysa sipariş listesine alınır.
+    # Kural: Ürün bu analiz döneminde 10 adet ve üzeri sattıysa VEYA birim satış fiyatı 15.000 TL altındaysa sipariş listesine alınır.
     # Aksi halde ürün ayrı olarak "Reçete geldikçe alınabilir" segmentine düşer.
     master["teknik_siparis_onerisi_ham"] = np.maximum(0, master["hedef_stok"] - master["stok"]).round(0)
     master["teknik_siparis_tahmini_tutar_ham"] = master["teknik_siparis_onerisi_ham"] * master["birim_satis"].fillna(0)
-    master["siparis_filtre_gecer_mi"] = (master["satilan_adet"] > 3) | (master["birim_satis"] < 10000)
+    master["siparis_filtre_gecer_mi"] = (master["satilan_adet"] >= 10) | (master["birim_satis"] < 15000)
     master["recete_geldikce_al_mi"] = (master["teknik_siparis_onerisi_ham"] > 0) & (~master["siparis_filtre_gecer_mi"])
     master["siparis_onerisi_ham"] = np.where(master["siparis_filtre_gecer_mi"], master["teknik_siparis_onerisi_ham"], 0).round(0)
     master["siparis_tahmini_tutar_ham"] = master["siparis_onerisi_ham"] * master["birim_satis"].fillna(0)
@@ -849,7 +849,7 @@ def make_product_master(inv_df: pd.DataFrame, prod_df: pd.DataFrame, analysis_da
     master["sermaye_riski_mi"] = (master["stok_degeri"] > master["stok_degeri"].quantile(0.90)) & (master["stok_bitis_gunu"] > 60)
     master["stokta_yok_satmis_mi"] = (master["satilan_adet"] > 0) & (master["stok"] <= 0)
     master["acil_siparis_mi"] = master["siparis_gerekli_mi"] & master["siparis_filtre_gecer_mi"] & (
-        master["stokta_yok_satmis_mi"] | (master["hizli_tukeniyor_mu"] & (master["satilan_adet"] > 3)) | (master["kritik_mi"] & (master["satilan_adet"] > 0))
+        master["stokta_yok_satmis_mi"] | (master["hizli_tukeniyor_mu"] & (master["satilan_adet"] >= 10)) | (master["kritik_mi"] & (master["satilan_adet"] > 0))
     )
     master["oncelikli_siparis_mi"] = master["siparis_gerekli_mi"] & master["siparis_filtre_gecer_mi"] & (~master["acil_siparis_mi"])
     master["siparis_segmenti"] = np.select(
@@ -1200,7 +1200,7 @@ def apply_order_budget(product_master: pd.DataFrame, order_budget_ratio: float) 
 
     # Eczacı filtresine göre segmentleri güncelle.
     df["acil_siparis_mi"] = df["siparis_gerekli_mi"] & df.get("siparis_filtre_gecer_mi", True) & (
-        df["stokta_yok_satmis_mi"] | (df["hizli_tukeniyor_mu"] & (df["satilan_adet"] > 3)) | (df["kritik_mi"] & (df["satilan_adet"] > 0))
+        df["stokta_yok_satmis_mi"] | (df["hizli_tukeniyor_mu"] & (df["satilan_adet"] >= 10)) | (df["kritik_mi"] & (df["satilan_adet"] > 0))
     )
     df["oncelikli_siparis_mi"] = df["siparis_gerekli_mi"] & df.get("siparis_filtre_gecer_mi", True) & (~df["acil_siparis_mi"])
     df["recete_geldikce_al_mi"] = (df.get("teknik_siparis_onerisi_ham", df["siparis_onerisi_ham"]) > 0) & (~df.get("siparis_filtre_gecer_mi", True))
@@ -1242,7 +1242,7 @@ def apply_order_budget(product_master: pd.DataFrame, order_budget_ratio: float) 
         df["siparis_tahmini_tutar"] = df["siparis_onerisi"] * pd.to_numeric(df["birim_satis"], errors="coerce").fillna(0)
         df["siparis_gerekli_mi"] = df["siparis_onerisi"] > 0
         df["acil_siparis_mi"] = df["siparis_gerekli_mi"] & df.get("siparis_filtre_gecer_mi", True) & (
-            df["stokta_yok_satmis_mi"] | (df["hizli_tukeniyor_mu"] & (df["satilan_adet"] > 3)) | (df["kritik_mi"] & (df["satilan_adet"] > 0))
+            df["stokta_yok_satmis_mi"] | (df["hizli_tukeniyor_mu"] & (df["satilan_adet"] >= 10)) | (df["kritik_mi"] & (df["satilan_adet"] > 0))
         )
         df["oncelikli_siparis_mi"] = df["siparis_gerekli_mi"] & df.get("siparis_filtre_gecer_mi", True) & (~df["acil_siparis_mi"])
         df["recete_geldikce_al_mi"] = (df.get("teknik_siparis_onerisi_ham", df["siparis_onerisi_ham"]) > 0) & (~df.get("siparis_filtre_gecer_mi", True))
@@ -1799,19 +1799,16 @@ if page == "🧭 Kontrol Merkezi":
     with vc1:
         if st.button("🔴 Kırmızı Reçete Ürünlerini Göster", use_container_width=True, key="go_red_rx"):
             st.session_state["active_page"] = "🔐 Reçete Merkezi"
-            st.session_state["page_radio"] = "🔐 Reçete Merkezi"
             st.session_state["recete_view"] = "🔴 Kırmızı"
             safe_rerun()
     with vc2:
         if st.button("🟢 Yeşil Reçete Ürünlerini Göster", use_container_width=True, key="go_green_rx"):
             st.session_state["active_page"] = "🔐 Reçete Merkezi"
-            st.session_state["page_radio"] = "🔐 Reçete Merkezi"
             st.session_state["recete_view"] = "🟢 Yeşil"
             safe_rerun()
     with vc3:
         if st.button("💰 KKİ Riskli Ürünleri Göster", use_container_width=True, key="go_kki"):
             st.session_state["active_page"] = "🧯 Risk Merkezi"
-            st.session_state["page_radio"] = "🧯 Risk Merkezi"
             st.session_state["risk_view"] = "💰 KKİ"
             safe_rerun()
 
