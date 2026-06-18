@@ -1709,7 +1709,19 @@ st.markdown(
 # SAYFALAR
 # ============================================================
 pages = ["🧭 Kontrol Merkezi", "🎯 AYÇA Asistan", "🏠 Sabah Ekranı", "🩺 Sağlık Karnesi", "🧯 Risk Merkezi", "🛒 Sipariş Motoru", "📦 Ürün Zekası", "🏆 Taşıyan Ürünler", "📉 Sessiz Kâr Kaybı", "💰 Kârlılık", "🧊 Ölü/Yavaş Stok", "📈 Ciro & Tahsilat", "👨‍⚕️ Doktor Intelligence", "🧑‍🤝‍🧑 Hasta Sadakat", "🏥 Kurum Intelligence", "🔐 Reçete Merkezi", "📥 Rapor"]
-page = st.radio("Bölüm", pages, horizontal=True, label_visibility="collapsed")
+if "active_page" not in st.session_state:
+    st.session_state["active_page"] = pages[0]
+if st.session_state.get("active_page") not in pages:
+    st.session_state["active_page"] = pages[0]
+page = st.radio(
+    "Bölüm",
+    pages,
+    horizontal=True,
+    label_visibility="collapsed",
+    index=pages.index(st.session_state.get("active_page", pages[0])),
+    key="page_radio",
+)
+st.session_state["active_page"] = page
 
 product_cols = [
     "barkod", "urun", "urun_grubu", "raf", "stok", "kritik_stok", "psf_final", "stok_degeri",
@@ -1783,6 +1795,21 @@ if page == "🧭 Kontrol Merkezi":
         """,
         unsafe_allow_html=True,
     )
+    vc1, vc2, vc3 = st.columns(3)
+    with vc1:
+        if st.button("🔴 Kırmızı Reçete Ürünlerini Göster", use_container_width=True):
+            st.session_state["active_page"] = "🔐 Reçete Merkezi"
+            st.session_state["recete_tab_hint"] = "red"
+            safe_rerun()
+    with vc2:
+        if st.button("🟢 Yeşil Reçete Ürünlerini Göster", use_container_width=True):
+            st.session_state["active_page"] = "🔐 Reçete Merkezi"
+            st.session_state["recete_tab_hint"] = "green"
+            safe_rerun()
+    with vc3:
+        if st.button("📄 Reçete Merkezine Git", use_container_width=True):
+            st.session_state["active_page"] = "🔐 Reçete Merkezi"
+            safe_rerun()
 
 elif page == "🎯 AYÇA Asistan":
     st.markdown('<div class="section-title">🎯 AYÇA Asistan</div>', unsafe_allow_html=True)
@@ -2228,18 +2255,58 @@ elif page == "🧯 Risk Merkezi":
 
 elif page == "🔐 Reçete Merkezi":
     st.markdown('<div class="section-title">🔐 Kontrollü Reçete Merkezi</div>', unsafe_allow_html=True)
-    st.caption("Bu ekran veri güvenliği ve mevzuat hassasiyeti nedeniyle hasta tanısı veya açık hassas sağlık verisi işlemeden, sadece eczane operasyon riski ve stok karar desteği olarak kurgulanmalıdır.")
-    st.markdown(
-        """
-        <div class="module-grid">
-            <div class="module-card alert-red"><div class="module-title">🔴 Kırmızı Reçete Takip Merkezi</div><div class="module-desc">Kırmızı reçeteli ürünlerde kritik stok, satış ritmi, olağandışı hareket ve sipariş hazırlığı takibi.</div></div>
-            <div class="module-card alert-green"><div class="module-title">🟢 Yeşil Reçete Takip Merkezi</div><div class="module-desc">Yeşil reçeteli ürünlerde stok yeterliliği, düzenli tüketim ve dönemsel sipariş ihtiyacı analizi.</div></div>
-            <div class="module-card alert-blue"><div class="module-title">📄 Raporlu Hasta / Düzenli İlaç Merkezi</div><div class="module-desc">Rapor yenileme ihtimali, düzenli ürün hazırlığı ve stok yok nedeniyle hasta kaybı riskini azaltma.</div></div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-    make_mini_card("Not", "Veri güvenliği", "Bu modül KVKK uyumlu şekilde, hasta adı/TC ve tanı verisini ürünleştirmeden tasarlanmalıdır.", "alert-purple")
+    st.caption("Bu ekran hasta tanısı veya açık hassas sağlık verisi işlemeden, sadece ürün bazlı stok/satış ve operasyon riski gösterir.")
+
+    c1, c2, c3, c4 = st.columns(4)
+    with c1: make_mini_card("🔴 Kırmızı Reçete", str(len(red_rx_df)), f"Stok: {money_fmt(red_rx_df['stok_degeri'].sum())}", "alert-red" if len(red_rx_df) else "")
+    with c2: make_mini_card("🟢 Yeşil Reçete", str(len(green_rx_df)), f"Satış: {money_fmt(green_rx_df['satis_tutari'].sum())}", "alert-green" if len(green_rx_df) else "")
+    with c3:
+        controlled_df = product_master[product_master.get("kontrollu_recete_mi", False)].copy()
+        make_mini_card("Kontrollü Toplam", str(len(controlled_df)), f"Stok değeri: {money_fmt(controlled_df['stok_degeri'].sum()) if not controlled_df.empty else money_fmt(0)}", "alert-purple" if len(controlled_df) else "")
+    with c4:
+        controlled_order_df = controlled_df[controlled_df.get("kontrollu_takip_mi", False)].copy() if not controlled_df.empty else pd.DataFrame()
+        make_mini_card("Takip Gereken", str(len(controlled_order_df)), "Teknik sipariş/stok sinyali var", "alert-orange" if len(controlled_order_df) else "alert-green")
+
+    recete_cols_show = [c for c in [
+        "barkod", "urun", "risk_segmenti", "risk_tipi", "risk_kaynak",
+        "stok", "kritik_stok", "stok_degeri", "satilan_adet", "satis_tutari",
+        "birim_satis", "stok_bitis_gunu_goster", "siparis_segmenti", "aksiyon"
+    ] if c in product_master.columns]
+
+    hint = st.session_state.pop("recete_tab_hint", None)
+    tab_names = ["🔴 Kırmızı Reçeteli Ürünler", "🟢 Yeşil Reçeteli Ürünler", "📋 Tüm Kontrollü Reçeteler", "⚠️ Takip Gerekenler"]
+    tabs_recete = st.tabs(tab_names)
+
+    with tabs_recete[0]:
+        st.markdown("### 🔴 Kırmızı Reçeteli Ürünler")
+        if red_rx_df.empty:
+            st.info("Bu eczane verisinde kırmızı reçete listesiyle eşleşen ürün bulunamadı.")
+        else:
+            st.dataframe(red_rx_df[recete_cols_show].sort_values(["stok_degeri", "satis_tutari"], ascending=False), use_container_width=True, hide_index=True)
+
+    with tabs_recete[1]:
+        st.markdown("### 🟢 Yeşil Reçeteli Ürünler")
+        if green_rx_df.empty:
+            st.info("Bu eczane verisinde yeşil reçete listesiyle eşleşen ürün bulunamadı.")
+        else:
+            st.dataframe(green_rx_df[recete_cols_show].sort_values(["satis_tutari", "satilan_adet"], ascending=False), use_container_width=True, hide_index=True)
+
+    with tabs_recete[2]:
+        st.markdown("### 📋 Tüm Kontrollü Reçeteler")
+        if controlled_df.empty:
+            st.info("Kırmızı/yeşil reçete eşleşmesi yok. Risk master dosyasını barkodlu yüklersen eşleşme oranı artar.")
+        else:
+            st.dataframe(controlled_df[recete_cols_show].sort_values(["risk_segmenti", "satis_tutari"], ascending=[True, False]), use_container_width=True, hide_index=True)
+
+    with tabs_recete[3]:
+        st.markdown("### ⚠️ Takip Gereken Kontrollü Ürünler")
+        if controlled_order_df.empty:
+            st.success("Kontrollü reçete ürünlerinde teknik sipariş/stok takip sinyali görünmüyor.")
+        else:
+            st.dataframe(controlled_order_df[recete_cols_show].sort_values(["stok_bitis_gunu_goster", "satis_tutari"], ascending=[True, False]), use_container_width=True, hide_index=True)
+
+    st.markdown("---")
+    make_mini_card("Not", "KVKK uyumlu kullanım", "Bu modül hasta adı/TC/tanı göstermeden, sadece ürün bazlı kontrollü reçete stok ve satış takibi yapar.", "alert-purple")
 
 elif page == "📥 Rapor":
     st.markdown('<div class="section-title">Excel Raporu</div>', unsafe_allow_html=True)
