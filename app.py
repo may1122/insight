@@ -160,6 +160,138 @@ st.markdown(
 )
 
 
+
+
+# ============================================================
+# GİRİŞ EKRANI CSS - TAM EKRAN SAAS
+# ============================================================
+st.markdown(
+    """
+    <style>
+    .login-shell {
+        min-height: calc(100vh - 70px);
+        display:grid;
+        grid-template-columns: 1.12fr .88fr;
+        gap:28px;
+        align-items:center;
+        padding: 24px 18px 42px 18px;
+    }
+    .login-left {
+        background: radial-gradient(circle at top left, rgba(255,255,255,.28), rgba(255,255,255,0) 42%),
+                    linear-gradient(135deg,#0F172A 0%,#1E3A8A 52%,#2563EB 100%);
+        border-radius:34px;
+        min-height:620px;
+        padding:42px;
+        color:white;
+        box-shadow:0 30px 80px rgba(37,99,235,.24);
+        position:relative;
+        overflow:hidden;
+    }
+    .login-left:after {
+        content:"";
+        position:absolute;
+        width:420px;
+        height:420px;
+        right:-130px;
+        top:-130px;
+        border-radius:999px;
+        background:radial-gradient(circle,rgba(255,255,255,.24),rgba(255,255,255,0));
+    }
+    .login-brand {
+        font-size:38px;
+        font-weight:950;
+        letter-spacing:-1.3px;
+        color:#FFFFFF;
+        margin-bottom:8px;
+    }
+    .login-brand span {font-size:20px; font-weight:800; color:#BFDBFE; margin-left:8px;}
+    .login-headline {
+        margin-top:70px;
+        max-width:680px;
+        font-size:42px;
+        line-height:1.08;
+        font-weight:950;
+        letter-spacing:-1.45px;
+        color:white;
+    }
+    .login-sub {
+        max-width:640px;
+        margin-top:18px;
+        font-size:16px;
+        line-height:1.66;
+        color:#DBEAFE;
+    }
+    .login-feature-grid {
+        display:grid;
+        grid-template-columns:repeat(2,minmax(0,1fr));
+        gap:12px;
+        margin-top:34px;
+        max-width:720px;
+    }
+    .login-feature {
+        background:rgba(255,255,255,.12);
+        border:1px solid rgba(255,255,255,.18);
+        border-radius:18px;
+        padding:14px 15px;
+        color:white;
+        font-weight:850;
+        font-size:14px;
+        backdrop-filter: blur(10px);
+    }
+    .login-version {
+        display:inline-flex;
+        margin-top:36px;
+        background:rgba(255,255,255,.13);
+        border:1px solid rgba(255,255,255,.20);
+        color:#FFFFFF;
+        border-radius:999px;
+        padding:10px 14px;
+        font-size:13px;
+        font-weight:900;
+    }
+    .login-right {
+        background:#FFFFFF;
+        border:1px solid #E2E8F0;
+        border-radius:34px;
+        padding:34px;
+        min-height:520px;
+        box-shadow:0 30px 80px rgba(15,23,42,.09);
+    }
+    .login-card-title {
+        font-size:28px;
+        font-weight:950;
+        letter-spacing:-.7px;
+        color:#0F172A;
+        margin-bottom:6px;
+    }
+    .login-card-sub {
+        font-size:14px;
+        color:#64748B;
+        line-height:1.55;
+        margin-bottom:22px;
+    }
+    .demo-box {
+        margin-top:22px;
+        background:#F8FAFC;
+        border:1px solid #E2E8F0;
+        border-radius:20px;
+        padding:16px;
+        color:#334155;
+        font-size:13px;
+        line-height:1.55;
+    }
+    .demo-box b {color:#0F172A;}
+    @media (max-width: 980px) {
+        .login-shell {grid-template-columns:1fr; padding:10px 0 30px 0;}
+        .login-left {min-height:auto; padding:28px;}
+        .login-headline {margin-top:34px; font-size:32px;}
+        .login-feature-grid {grid-template-columns:1fr;}
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
 # ============================================================
 # DEMO GİRİŞ
 # ============================================================
@@ -199,35 +331,31 @@ def show_basic_info(message: str):
 def show_demo_auth_screen():
     st.markdown(
         """
-        <div class="login-wrap">
-            <div class="login-hero">
-                <div class="login-logo">AYÇA<span>Insight</span></div>
-                <div class="login-title">Eczanenizin dijital operasyon merkezi</div>
+        <div class="login-shell">
+            <div class="login-left">
+                <div class="login-brand">AYÇA <span>Insight</span></div>
+                <div class="login-headline">Eczanenizin dijital operasyon merkezi</div>
                 <div class="login-sub">
                     Stok, kârlılık, reçete süreçleri ve finansal riskleri tek ekranda yönetin.
-                    AYÇA Insight; TEBEOS verilerini karar destek ekranına dönüştürür.
+                    AYÇA Insight, TEBEOS verilerinizi karar destek katmanına dönüştürür.
                 </div>
-                <div class="login-features">
-                    <div class="login-feature">✓ Sipariş Karar Desteği</div>
-                    <div class="login-feature">✓ KKİ Risk Takibi</div>
-                    <div class="login-feature">✓ Kırmızı / Yeşil Reçete Yönetimi</div>
-                    <div class="login-feature">✓ Kârlılık ve Tahsilat Analizi</div>
-                    <div class="login-feature">✓ Envanter Sağlığı</div>
-                    <div class="login-feature">✓ Yapay Zekâ Destekli İçgörüler</div>
+                <div class="login-feature-grid">
+                    <div class="login-feature">✓ Sipariş karar desteği</div>
+                    <div class="login-feature">✓ KKİ risk takibi</div>
+                    <div class="login-feature">✓ Kırmızı / Yeşil reçete yönetimi</div>
+                    <div class="login-feature">✓ Kârlılık ve tahsilat analizi</div>
+                    <div class="login-feature">✓ Stok ve sermaye kontrolü</div>
+                    <div class="login-feature">✓ Yapay zekâ destekli içgörüler</div>
                 </div>
-                <div class="login-footer-badges">
-                    <div class="login-badge">Operasyon</div>
-                    <div class="login-badge">Finans</div>
-                    <div class="login-badge">Risk</div>
-                    <div class="login-badge">Yapay Zekâ</div>
-                </div>
+                <div class="login-version">AYÇA Insight V10.2 · 2026 SaaS</div>
             </div>
-            <div class="login-card">
-                <h2>Hoş geldiniz 👋</h2>
-                <p>AYÇA Insight'a giriş yaparak eczanenizin sabah brifingini, risklerini ve önerilerini görüntüleyin.</p>
+            <div class="login-right">
+                <div class="login-card-title">Hoş geldiniz 👋</div>
+                <div class="login-card-sub">AYÇA Insight'a giriş yaparak eczanenizin sabah brifingini ve operasyon merkezini açın.</div>
         """,
         unsafe_allow_html=True,
     )
+
     username = st.text_input("Kullanıcı adı", value="premium")
     password = st.text_input("Şifre", value="premium2026", type="password")
     if st.button("🚀 Giriş Yap", use_container_width=True, type="primary"):
@@ -240,10 +368,11 @@ def show_demo_auth_screen():
             safe_rerun()
         else:
             st.error("Kullanıcı adı veya şifre hatalı. Premium: premium / premium2026")
+
     st.markdown(
         """
                 <div class="demo-box">
-                    <b>Demo Hesaplar</b><br>
+                    <b>Demo hesaplar</b><br>
                     Premium: <b>premium</b> / <b>premium2026</b><br>
                     Basic: <b>basic</b> / <b>basic2026</b>
                 </div>
@@ -252,7 +381,6 @@ def show_demo_auth_screen():
         """,
         unsafe_allow_html=True,
     )
-
 
 if "authenticated" not in st.session_state:
     st.session_state["authenticated"] = False
@@ -1489,7 +1617,7 @@ if st.sidebar.button("Çıkış Yap", use_container_width=True):
     safe_rerun()
 
 st.sidebar.title("💊 AYÇA Insight")
-st.sidebar.caption("V10.1 SaaS · Sabah Brifingi + Operasyon + Finans + Risk")
+st.sidebar.caption("V10.2 SaaS · Sade Menü + Tam Ekran Giriş")
 eczane_adi = st.sidebar.text_input("Eczane Adı", value="İdil Eczanesi")
 kullanici_adi = st.sidebar.text_input("Kullanıcı", value="Abdullah Bey")
 
@@ -1500,6 +1628,8 @@ risk_master_file = st.sidebar.file_uploader("Opsiyonel) Risk Master Excel / CSV"
 
 st.sidebar.markdown("---")
 selected_period = st.sidebar.selectbox("Satış hareket dönemi", ["Son 7 gün", "Son 14 gün", "Son 30 gün", "Tüm veri"], index=2)
+st.session_state["selected_period_label"] = selected_period
+period_label = selected_period
 target_days = st.sidebar.slider("Sipariş hedef stok günü", 7, 90, 30)
 safety_days = st.sidebar.slider("Güvenlik stok günü", 0, 30, 7)
 order_policy = st.sidebar.selectbox(
@@ -1659,7 +1789,7 @@ st.markdown(
     <div class="ayca-header">
         <div class="ayca-title">
             <h1>AYÇA Insight V10.1</h1>
-            <p>{eczane_adi} · {selected_period} · Gün hesabı: {analysis_days} gün · {today_str}</p>
+            <p>{eczane_adi} · {period_label} · Gün hesabı: {analysis_days} gün · {today_str}</p>
         </div>
         <div class="header-pill">{get_membership()} Plan · Sağlık Skoru {score}/100</div>
     </div>
@@ -1692,6 +1822,8 @@ product_cols = [
     "siparis_segmenti", "siparis_filtre_gecer_mi", "teknik_siparis_onerisi_ham", "siparis_onerisi_ham", "siparis_tahmini_tutar_ham", "siparis_onerisi", "siparis_tahmini_tutar", "siparis_kisit_katsayisi", "abc_sinif", "aksiyon"
 ]
 
+# Güvenli dönem etiketi: bazı Streamlit yeniden çalıştırmalarında sidebar değeri erişilemezse hata vermesin.
+period_label = st.session_state.get("selected_period_label", globals().get("selected_period", "Son 30 gün"))
 
 if page == "🏠 Sabah Brifingi":
     st.markdown('<div class="section-title">🏠 Sabah Brifingi</div>', unsafe_allow_html=True)
@@ -1721,7 +1853,7 @@ if page == "🏠 Sabah Brifingi":
 
     st.markdown('<div class="group-title">💰 Ekonomik Sağlık</div>', unsafe_allow_html=True)
     e1, e2, e3, e4 = st.columns(4)
-    with e1: make_metric_card("Ciro", money_fmt(current_stats["ciro"]), selected_period, ciro_trend, ciro_class)
+    with e1: make_metric_card("Ciro", money_fmt(current_stats["ciro"]), period_label, ciro_trend, ciro_class)
     with e2: make_metric_card("Brüt Kâr", money_fmt(current_stats["kar"]), "Satış hareketleri", profit_trend, profit_class)
     with e3: make_metric_card("Marj", pct_fmt(current_stats["marj"]), "Brüt kâr / ciro", margin_trend, margin_class)
     with e4: make_metric_card("Tahsilat Açığı", money_fmt(current_stats["tahsilat_acigi"]), f"Oran {pct_fmt(safe_div(current_stats['tahsilat_acigi'], current_stats['ciro']))}", None, "metric-down")
@@ -1786,7 +1918,7 @@ elif page == "💰 Finans Merkezi":
     fin_tabs = st.tabs(["Karlılık", "Sessiz Kâr Kaybı", "Ciro & Tahsilat"])
     with fin_tabs[0]:
         k1, k2, k3, k4 = st.columns(4)
-        with k1: make_metric_card("Ciro", money_fmt(current_stats["ciro"]), selected_period, ciro_trend, ciro_class)
+        with k1: make_metric_card("Ciro", money_fmt(current_stats["ciro"]), period_label, ciro_trend, ciro_class)
         with k2: make_metric_card("Brüt Kâr", money_fmt(current_stats["kar"]), "Satış hareketleri", profit_trend, profit_class)
         with k3: make_metric_card("Marj", pct_fmt(current_stats["marj"]), "Brüt kâr / ciro")
         with k4: make_metric_card("Ortalama Sepet", money_fmt(current_stats["ortalama_sepet"]), f"{current_stats['islem']} işlem")
