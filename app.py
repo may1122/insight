@@ -1,5 +1,5 @@
 # ============================================================
-# AYÇA Insight V8.1 SaaS - Kontrol Merkezi + Asistan + Ürün Fırsatları
+# AYÇA Insight V8.2 SaaS - Eczacı Sipariş Filtresi + Kontrol Merkezi
 # ------------------------------------------------------------
 # Zorunlu / Önerilen dosyalar:
 # 1) Envanter Exceli
@@ -43,7 +43,7 @@ import streamlit as st
 # STREAMLIT AYARI
 # ============================================================
 st.set_page_config(
-    page_title="AYÇA Insight V8.1 SaaS",
+    page_title="AYÇA Insight V8.2 SaaS",
     page_icon="💊",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -164,7 +164,7 @@ def show_demo_auth_screen():
         st.markdown(
             """
             <div class="ai-card">
-                <div class="ai-title">AYÇA Insight V8.1 SaaS</div>
+                <div class="ai-title">AYÇA Insight V8.2 SaaS</div>
                 <div class="ai-text">
                 Bu sürüm üç TEBEOS Excel çıktısını birlikte okur: <b>Envanter</b>, <b>Ürün Bazında Toplamlar</b> ve <b>Satış Hareketleri</b>.
                 Böylece ürün bazlı satış hızı, stok bitiş günü, sipariş tavsiyesi, ölü stok ve kârlılık motoru aktif olur.
@@ -595,11 +595,11 @@ def make_product_master(inv_df: pd.DataFrame, prod_df: pd.DataFrame, analysis_da
 
     # Teknik ham öneri: matematiksel olarak stok hedefinin altında kalan tüm ürünler.
     # Eczacı filtresi: pahalı ve seyrek satılan özel/akıllı ilaçlar otomatik acil siparişe düşmesin.
-    # Kural: Ürün bu analiz döneminde 3 adetten fazla sattıysa VEYA birim satış fiyatı 10.000 TL altındaysa sipariş listesine alınır.
+    # Kural: Ürün bu analiz döneminde 10 adet ve üzeri sattıysa VEYA birim satış fiyatı 15.000 TL ve altındaysa sipariş listesine alınır.
     # Aksi halde ürün ayrı olarak "Reçete geldikçe alınabilir" segmentine düşer.
     master["teknik_siparis_onerisi_ham"] = np.maximum(0, master["hedef_stok"] - master["stok"]).round(0)
     master["teknik_siparis_tahmini_tutar_ham"] = master["teknik_siparis_onerisi_ham"] * master["birim_satis"].fillna(0)
-    master["siparis_filtre_gecer_mi"] = (master["satilan_adet"] > 3) | (master["birim_satis"] < 10000)
+    master["siparis_filtre_gecer_mi"] = (master["satilan_adet"] >= 10) | (master["birim_satis"] <= 15000)
     master["recete_geldikce_al_mi"] = (master["teknik_siparis_onerisi_ham"] > 0) & (~master["siparis_filtre_gecer_mi"])
     master["siparis_onerisi_ham"] = np.where(master["siparis_filtre_gecer_mi"], master["teknik_siparis_onerisi_ham"], 0).round(0)
     master["siparis_tahmini_tutar_ham"] = master["siparis_onerisi_ham"] * master["birim_satis"].fillna(0)
@@ -619,7 +619,7 @@ def make_product_master(inv_df: pd.DataFrame, prod_df: pd.DataFrame, analysis_da
     master["sermaye_riski_mi"] = (master["stok_degeri"] > master["stok_degeri"].quantile(0.90)) & (master["stok_bitis_gunu"] > 60)
     master["stokta_yok_satmis_mi"] = (master["satilan_adet"] > 0) & (master["stok"] <= 0)
     master["acil_siparis_mi"] = master["siparis_gerekli_mi"] & master["siparis_filtre_gecer_mi"] & (
-        master["stokta_yok_satmis_mi"] | (master["hizli_tukeniyor_mu"] & (master["satilan_adet"] > 3)) | (master["kritik_mi"] & (master["satilan_adet"] > 0))
+        master["stokta_yok_satmis_mi"] | (master["hizli_tukeniyor_mu"] & (master["satilan_adet"] >= 10)) | (master["kritik_mi"] & (master["satilan_adet"] > 0))
     )
     master["oncelikli_siparis_mi"] = master["siparis_gerekli_mi"] & master["siparis_filtre_gecer_mi"] & (~master["acil_siparis_mi"])
     master["siparis_segmenti"] = np.select(
@@ -970,7 +970,7 @@ def apply_order_budget(product_master: pd.DataFrame, order_budget_ratio: float) 
 
     # Eczacı filtresine göre segmentleri güncelle.
     df["acil_siparis_mi"] = df["siparis_gerekli_mi"] & df.get("siparis_filtre_gecer_mi", True) & (
-        df["stokta_yok_satmis_mi"] | (df["hizli_tukeniyor_mu"] & (df["satilan_adet"] > 3)) | (df["kritik_mi"] & (df["satilan_adet"] > 0))
+        df["stokta_yok_satmis_mi"] | (df["hizli_tukeniyor_mu"] & (df["satilan_adet"] >= 10)) | (df["kritik_mi"] & (df["satilan_adet"] > 0))
     )
     df["oncelikli_siparis_mi"] = df["siparis_gerekli_mi"] & df.get("siparis_filtre_gecer_mi", True) & (~df["acil_siparis_mi"])
     df["recete_geldikce_al_mi"] = (df.get("teknik_siparis_onerisi_ham", df["siparis_onerisi_ham"]) > 0) & (~df.get("siparis_filtre_gecer_mi", True))
@@ -1012,7 +1012,7 @@ def apply_order_budget(product_master: pd.DataFrame, order_budget_ratio: float) 
         df["siparis_tahmini_tutar"] = df["siparis_onerisi"] * pd.to_numeric(df["birim_satis"], errors="coerce").fillna(0)
         df["siparis_gerekli_mi"] = df["siparis_onerisi"] > 0
         df["acil_siparis_mi"] = df["siparis_gerekli_mi"] & df.get("siparis_filtre_gecer_mi", True) & (
-            df["stokta_yok_satmis_mi"] | (df["hizli_tukeniyor_mu"] & (df["satilan_adet"] > 3)) | (df["kritik_mi"] & (df["satilan_adet"] > 0))
+            df["stokta_yok_satmis_mi"] | (df["hizli_tukeniyor_mu"] & (df["satilan_adet"] >= 10)) | (df["kritik_mi"] & (df["satilan_adet"] > 0))
         )
         df["oncelikli_siparis_mi"] = df["siparis_gerekli_mi"] & df.get("siparis_filtre_gecer_mi", True) & (~df["acil_siparis_mi"])
         df["recete_geldikce_al_mi"] = (df.get("teknik_siparis_onerisi_ham", df["siparis_onerisi_ham"]) > 0) & (~df.get("siparis_filtre_gecer_mi", True))
@@ -1229,7 +1229,7 @@ if inventory_file is None or product_file is None or sales_file is None:
         f"""
         <div class="ayca-header">
             <div class="ayca-title">
-                <h1>AYÇA Insight V8.1 SaaS</h1>
+                <h1>AYÇA Insight V8.2 SaaS</h1>
                 <p>{eczane_adi} · Üç Excel dosyasını yükle: envanter, ürün bazında toplamlar, satış hareketleri.</p>
             </div>
             <div class="header-pill">Dosya bekleniyor</div>
@@ -1343,7 +1343,7 @@ st.markdown(
     f"""
     <div class="ayca-header">
         <div class="ayca-title">
-            <h1>AYÇA Insight V8.1 SaaS</h1>
+            <h1>AYÇA Insight V8.2 SaaS</h1>
             <p>{eczane_adi} · {selected_period} · Gün hesabı: {analysis_days} gün · {today_str}</p>
         </div>
         <div class="header-pill">AYÇA Ürün Puanı: {score}/100 · {score_status(score)}</div>
@@ -1543,7 +1543,7 @@ elif page == "🎯 AYÇA Asistan":
 
     s1, s2, s3, s4 = st.columns(4)
     with s1: make_mini_card("Önerilen Sipariş", money_fmt(order_budget_info["final_total"]), f"Stokun %{int(order_budget_info['budget_ratio']*100)} bütçesi", "alert-green")
-    with s2: make_mini_card("Acil Sipariş", str(len(urgent_df)), "3+ satış veya <10.000 TL filtresi", "alert-red" if len(urgent_df) else "alert-green")
+    with s2: make_mini_card("Acil Sipariş", str(len(urgent_df)), "10+ satış veya ≤15.000 TL filtresi", "alert-red" if len(urgent_df) else "alert-green")
     with s3: make_mini_card("Sessiz Kâr Kaybı", str(business_insights['summary']['silent_loss_count']), money_fmt(business_insights['summary']['silent_loss_amount']), "alert-orange" if business_insights['summary']['silent_loss_count'] else "alert-green")
     with s4: make_mini_card("Hareketsiz Sermaye", money_fmt(business_insights['summary']['lost_candidate_value']), f"{business_insights['summary']['lost_candidate_count']} ürün", "alert-purple" if business_insights['summary']['lost_candidate_count'] else "alert-green")
 
@@ -1957,7 +1957,7 @@ elif page == "📥 Rapor":
         patient_loyalty.get("frequency"), patient_loyalty.get("lost"), business_insights
     )
     st.download_button(
-        "📥 AYÇA Insight V8.1 SaaS Raporunu İndir",
+        "📥 AYÇA Insight V8.2 SaaS Raporunu İndir",
         data=report,
         file_name=f"ayca_insight_v8_1_saas_rapor_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
