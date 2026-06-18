@@ -592,10 +592,19 @@ def make_product_master(inv_df: pd.DataFrame, prod_df: pd.DataFrame, analysis_da
     master["stok_bitis_gunu"] = np.where(master["gunluk_satis_hizi"] > 0, master["stok"] / master["gunluk_satis_hizi"], np.inf)
     master["stok_bitis_gunu_goster"] = master["stok_bitis_gunu"].replace(np.inf, np.nan)
     master["hedef_stok"] = np.ceil(master["gunluk_satis_hizi"] * (target_days + safety_days))
-    master["siparis_onerisi_ham"] = np.maximum(0, master["hedef_stok"] - master["stok"]).round(0)
+
+    # Teknik ham öneri: matematiksel olarak stok hedefinin altında kalan tüm ürünler.
+    # Eczacı filtresi: pahalı ve seyrek satılan özel/akıllı ilaçlar otomatik acil siparişe düşmesin.
+    # Kural: Ürün bu analiz döneminde 3 adetten fazla sattıysa VEYA birim satış fiyatı 10.000 TL altındaysa sipariş listesine alınır.
+    # Aksi halde ürün ayrı olarak "Reçete geldikçe alınabilir" segmentine düşer.
+    master["teknik_siparis_onerisi_ham"] = np.maximum(0, master["hedef_stok"] - master["stok"]).round(0)
+    master["teknik_siparis_tahmini_tutar_ham"] = master["teknik_siparis_onerisi_ham"] * master["birim_satis"].fillna(0)
+    master["siparis_filtre_gecer_mi"] = (master["satilan_adet"] > 3) | (master["birim_satis"] < 10000)
+    master["recete_geldikce_al_mi"] = (master["teknik_siparis_onerisi_ham"] > 0) & (~master["siparis_filtre_gecer_mi"])
+    master["siparis_onerisi_ham"] = np.where(master["siparis_filtre_gecer_mi"], master["teknik_siparis_onerisi_ham"], 0).round(0)
     master["siparis_tahmini_tutar_ham"] = master["siparis_onerisi_ham"] * master["birim_satis"].fillna(0)
 
-    # Varsayılan final öneri, bütçe kontrolünden önce ham öneriye eşittir.
+    # Varsayılan final öneri, bütçe kontrolünden önce filtrelenmiş ham öneriye eşittir.
     # Aşağıda apply_order_budget() ile mevcut stok değerinin belirli oranına göre orantılı küçültülür.
     master["siparis_onerisi"] = master["siparis_onerisi_ham"].copy()
     master["siparis_tahmini_tutar"] = master["siparis_tahmini_tutar_ham"].copy()
@@ -609,6 +618,15 @@ def make_product_master(inv_df: pd.DataFrame, prod_df: pd.DataFrame, analysis_da
     master["yavas_stok_mu"] = (master["satilan_adet"] > 0) & (master["stok_bitis_gunu"] > 90) & (master["stok"] > 0)
     master["sermaye_riski_mi"] = (master["stok_degeri"] > master["stok_degeri"].quantile(0.90)) & (master["stok_bitis_gunu"] > 60)
     master["stokta_yok_satmis_mi"] = (master["satilan_adet"] > 0) & (master["stok"] <= 0)
+    master["acil_siparis_mi"] = master["siparis_gerekli_mi"] & master["siparis_filtre_gecer_mi"] & (
+        master["stokta_yok_satmis_mi"] | (master["hizli_tukeniyor_mu"] & (master["satilan_adet"] > 3)) | (master["kritik_mi"] & (master["satilan_adet"] > 0))
+    )
+    master["oncelikli_siparis_mi"] = master["siparis_gerekli_mi"] & master["siparis_filtre_gecer_mi"] & (~master["acil_siparis_mi"])
+    master["siparis_segmenti"] = np.select(
+        [master["acil_siparis_mi"], master["oncelikli_siparis_mi"], master["recete_geldikce_al_mi"]],
+        ["Acil Sipariş", "Öncelikli Sipariş", "Reçete Geldikçe Al"],
+        default="Normal Takip",
+    )
 
     master = master.sort_values(["satis_tutari", "satilan_adet"], ascending=False)
     total_sales = master["satis_tutari"].sum()
@@ -621,15 +639,17 @@ def make_product_master(inv_df: pd.DataFrame, prod_df: pd.DataFrame, analysis_da
     )
     master["aksiyon"] = np.select(
         [
-            master["stokta_yok_satmis_mi"],
-            master["hizli_tukeniyor_mu"] & master["siparis_gerekli_mi"],
+            master["acil_siparis_mi"],
+            master["oncelikli_siparis_mi"],
+            master["recete_geldikce_al_mi"],
             master["olu_stok_mu"],
             master["yavas_stok_mu"],
             master["sermaye_riski_mi"],
         ],
         [
             "Acil sipariş / satış kaçırma riski",
-            "Sipariş öner",
+            "Öncelikli sipariş",
+            "Reçete geldikçe al - pahalı/seyrek ürün",
             "Ölü stok - aksiyon al",
             "Yavaş stok - kampanya / raf kontrolü",
             "Sermaye riski - stok azalt",
@@ -855,14 +875,18 @@ def build_business_insights(product_master: pd.DataFrame, current_stats: dict, p
         health_notes.append(f"Sessiz kâr kaybı adayı {len(silent_loss)} ürün var; ilk ürün {silent_loss.iloc[0]['urun']}.")
 
     # AYÇA Asistan kartları.
-    urgent_count = int(pm.get("stokta_yok_satmis_mi", pd.Series(dtype=bool)).sum())
+    urgent_count = int(pm.get("acil_siparis_mi", pm.get("stokta_yok_satmis_mi", pd.Series(dtype=bool))).sum())
     fast_count = int(pm.get("hizli_tukeniyor_mu", pd.Series(dtype=bool)).sum())
     reorder_count = int(pm.get("siparis_gerekli_mi", pd.Series(dtype=bool)).sum())
+    rx_as_needed_count = int(pm.get("recete_geldikce_al_mi", pd.Series(dtype=bool)).sum())
     top_profit = active.sort_values("kar_tutari", ascending=False).head(1) if not active.empty else pd.DataFrame()
     assistant_cards = []
     if urgent_count:
-        first = pm[pm["stokta_yok_satmis_mi"]].sort_values("satis_tutari", ascending=False).iloc[0]
-        assistant_cards.append(("🔴", "Satış Kaçırma Riski", f"{urgent_count} ürün satmış ama stok 0/eksi. İlk kontrol: {first['urun']}."))
+        first = pm[pm.get("acil_siparis_mi", pm["stokta_yok_satmis_mi"])].sort_values("satis_tutari", ascending=False).iloc[0]
+        assistant_cards.append(("🔴", "Acil Sipariş Riski", f"{urgent_count} ürün eczacı filtresinden geçerek acil listeye girdi. İlk kontrol: {first['urun']}."))
+    if rx_as_needed_count:
+        first = pm[pm["recete_geldikce_al_mi"]].sort_values("birim_satis", ascending=False).iloc[0]
+        assistant_cards.append(("🧠", "Reçete Geldikçe Al", f"{rx_as_needed_count} pahalı/seyrek ürün acil listeden ayrıldı. İlk örnek: {first['urun']}."))
     if fast_count:
         first = pm[pm["hizli_tukeniyor_mu"]].sort_values("stok_bitis_gunu").iloc[0]
         day_text = num_fmt(first.get("stok_bitis_gunu_goster", 0), 1)
@@ -935,7 +959,7 @@ def apply_order_budget(product_master: pd.DataFrame, order_budget_ratio: float) 
     # Orantılı küçültme: adetler aşağı yuvarlanır. Çok kritik ve 0'a düşen ürünler için 1 adetlik minimum korunur.
     raw_qty = pd.to_numeric(df["siparis_onerisi_ham"], errors="coerce").fillna(0)
     scaled_qty = np.floor(raw_qty * scale)
-    critical_min_mask = (raw_qty > 0) & (scaled_qty < 1) & (df["stokta_yok_satmis_mi"] | df["hizli_tukeniyor_mu"] | df["kritik_mi"])
+    critical_min_mask = (raw_qty > 0) & (scaled_qty < 1) & (df.get("siparis_filtre_gecer_mi", True)) & (df["stokta_yok_satmis_mi"] | df["hizli_tukeniyor_mu"] | df["kritik_mi"])
     scaled_qty = np.where(critical_min_mask, 1, scaled_qty)
 
     # scaled_qty np.ndarray dönebilir; Series'e çevirmezsek .fillna() hatası oluşur.
@@ -944,12 +968,24 @@ def apply_order_budget(product_master: pd.DataFrame, order_budget_ratio: float) 
     df["siparis_tahmini_tutar"] = df["siparis_onerisi"] * pd.to_numeric(df["birim_satis"], errors="coerce").fillna(0)
     df["siparis_gerekli_mi"] = df["siparis_onerisi"] > 0
 
+    # Eczacı filtresine göre segmentleri güncelle.
+    df["acil_siparis_mi"] = df["siparis_gerekli_mi"] & df.get("siparis_filtre_gecer_mi", True) & (
+        df["stokta_yok_satmis_mi"] | (df["hizli_tukeniyor_mu"] & (df["satilan_adet"] > 3)) | (df["kritik_mi"] & (df["satilan_adet"] > 0))
+    )
+    df["oncelikli_siparis_mi"] = df["siparis_gerekli_mi"] & df.get("siparis_filtre_gecer_mi", True) & (~df["acil_siparis_mi"])
+    df["recete_geldikce_al_mi"] = (df.get("teknik_siparis_onerisi_ham", df["siparis_onerisi_ham"]) > 0) & (~df.get("siparis_filtre_gecer_mi", True))
+    df["siparis_segmenti"] = np.select(
+        [df["acil_siparis_mi"], df["oncelikli_siparis_mi"], df["recete_geldikce_al_mi"]],
+        ["Acil Sipariş", "Öncelikli Sipariş", "Reçete Geldikçe Al"],
+        default="Normal Takip",
+    )
+
     # Yuvarlama/minimum 1 adet sebebiyle bütçe az aşılırsa en düşük öncelikli ürünlerden kırp.
     final_total = float(df["siparis_tahmini_tutar"].sum())
     if budget_limit > 0 and final_total > budget_limit:
         df = df.sort_values(
-            ["stokta_yok_satmis_mi", "hizli_tukeniyor_mu", "kritik_mi", "satis_tutari", "kar_tutari"],
-            ascending=[False, False, False, False, False],
+            ["acil_siparis_mi", "oncelikli_siparis_mi", "stokta_yok_satmis_mi", "hizli_tukeniyor_mu", "kritik_mi", "satis_tutari", "kar_tutari"],
+            ascending=[False, False, False, False, False, False, False],
         ).copy()
         running = 0.0
         keep_qty = []
@@ -975,6 +1011,16 @@ def apply_order_budget(product_master: pd.DataFrame, order_budget_ratio: float) 
         df["siparis_onerisi"] = pd.to_numeric(df["siparis_onerisi"], errors="coerce").fillna(0).round(0)
         df["siparis_tahmini_tutar"] = df["siparis_onerisi"] * pd.to_numeric(df["birim_satis"], errors="coerce").fillna(0)
         df["siparis_gerekli_mi"] = df["siparis_onerisi"] > 0
+        df["acil_siparis_mi"] = df["siparis_gerekli_mi"] & df.get("siparis_filtre_gecer_mi", True) & (
+            df["stokta_yok_satmis_mi"] | (df["hizli_tukeniyor_mu"] & (df["satilan_adet"] > 3)) | (df["kritik_mi"] & (df["satilan_adet"] > 0))
+        )
+        df["oncelikli_siparis_mi"] = df["siparis_gerekli_mi"] & df.get("siparis_filtre_gecer_mi", True) & (~df["acil_siparis_mi"])
+        df["recete_geldikce_al_mi"] = (df.get("teknik_siparis_onerisi_ham", df["siparis_onerisi_ham"]) > 0) & (~df.get("siparis_filtre_gecer_mi", True))
+        df["siparis_segmenti"] = np.select(
+            [df["acil_siparis_mi"], df["oncelikli_siparis_mi"], df["recete_geldikce_al_mi"]],
+            ["Acil Sipariş", "Öncelikli Sipariş", "Reçete Geldikçe Al"],
+            default="Normal Takip",
+        )
 
     # Aksiyon metnini final öneriye göre yeniden yaz.
     df["aksiyon"] = np.select(
@@ -1012,15 +1058,19 @@ def apply_order_budget(product_master: pd.DataFrame, order_budget_ratio: float) 
 
 def create_action_items(product_master, current_stats, previous_stats, daily_df):
     actions = []
-    urgent = product_master[product_master["stokta_yok_satmis_mi"]].sort_values("satis_tutari", ascending=False)
-    reorder = product_master[product_master["siparis_gerekli_mi"]].sort_values("siparis_tahmini_tutar", ascending=False)
+    urgent = product_master[product_master.get("acil_siparis_mi", product_master["stokta_yok_satmis_mi"])].sort_values("satis_tutari", ascending=False)
+    reorder = product_master[product_master["siparis_gerekli_mi"]].sort_values(["acil_siparis_mi", "siparis_tahmini_tutar"], ascending=[False, False])
+    rx_as_needed = product_master[product_master.get("recete_geldikce_al_mi", False)].sort_values("birim_satis", ascending=False)
     dead = product_master[product_master["olu_stok_mu"]].sort_values("stok_degeri", ascending=False)
     slow = product_master[product_master["yavas_stok_mu"]].sort_values("stok_degeri", ascending=False)
     profitable = product_master[product_master["satilan_adet"] > 0].sort_values("kar_tutari", ascending=False)
 
     if not urgent.empty:
         r = urgent.iloc[0]
-        actions.append(f"⛔ {len(urgent)} ürün satılmış ama stok 0/eksi. İlk risk: {r['urun']} · satış {num_fmt(r['satilan_adet'],0)} adet.")
+        actions.append(f"⛔ {len(urgent)} ürün acil sipariş filtresinden geçti. İlk risk: {r['urun']} · satış {num_fmt(r['satilan_adet'],0)} adet.")
+    if not rx_as_needed.empty:
+        r = rx_as_needed.iloc[0]
+        actions.append(f"🧠 {len(rx_as_needed)} pahalı/seyrek ürün acil listeden ayrıldı. Reçete geldikçe alınabilir: {r['urun']} · birim {money_fmt(r['birim_satis'])}.")
     if not reorder.empty:
         r = reorder.iloc[0]
         actions.append(f"🛒 Sipariş listesinde {len(reorder)} ürün var. En yüksek tutarlı öneri: {r['urun']} · {num_fmt(r['siparis_onerisi'],0)} adet.")
@@ -1097,6 +1147,8 @@ def create_excel_report(product_master, sales_df, period_df, kurum_df, doktor_df
     with pd.ExcelWriter(output, engine="openpyxl") as writer:
         product_master[export_cols].to_excel(writer, sheet_name="Urun_Zekasi", index=False)
         product_master[product_master["siparis_gerekli_mi"]][export_cols].to_excel(writer, sheet_name="Siparis_Onerisi", index=False)
+        if "recete_geldikce_al_mi" in product_master.columns:
+            product_master[product_master["recete_geldikce_al_mi"]][export_cols].to_excel(writer, sheet_name="Recete_Geldikce_Al", index=False)
         product_master[product_master["olu_stok_mu"]][export_cols].to_excel(writer, sheet_name="Olu_Stok", index=False)
         product_master[product_master["yavas_stok_mu"]][export_cols].to_excel(writer, sheet_name="Yavas_Stok", index=False)
         product_master[product_master["stokta_yok_satmis_mi"]][export_cols].to_excel(writer, sheet_name="Stokta_Yok_Satmis", index=False)
@@ -1263,10 +1315,12 @@ doctor_intel = build_doctor_intelligence(period_df, sales_df, product_master)
 business_insights = build_business_insights(product_master, current_stats, previous_stats, order_budget_info, score_items)
 
 # Segmentler
-reorder_df = product_master[product_master["siparis_gerekli_mi"]].sort_values("siparis_tahmini_tutar", ascending=False)
+reorder_df = product_master[product_master["siparis_gerekli_mi"]].sort_values(["acil_siparis_mi", "siparis_tahmini_tutar"], ascending=[False, False])
 dead_df = product_master[product_master["olu_stok_mu"]].sort_values("stok_degeri", ascending=False)
 slow_df = product_master[product_master["yavas_stok_mu"]].sort_values("stok_degeri", ascending=False)
-urgent_df = product_master[product_master["stokta_yok_satmis_mi"]].sort_values("satis_tutari", ascending=False)
+urgent_df = product_master[product_master.get("acil_siparis_mi", product_master["stokta_yok_satmis_mi"])].sort_values("satis_tutari", ascending=False)
+priority_df = product_master[product_master.get("oncelikli_siparis_mi", False)].sort_values("siparis_tahmini_tutar", ascending=False)
+rx_as_needed_df = product_master[product_master.get("recete_geldikce_al_mi", False)].sort_values("birim_satis", ascending=False)
 fast_df = product_master[product_master["hizli_tukeniyor_mu"]].sort_values("stok_bitis_gunu")
 profit_df = product_master[product_master["satilan_adet"] > 0].sort_values("kar_tutari", ascending=False)
 capital_df = product_master.sort_values("stok_degeri", ascending=False)
@@ -1405,7 +1459,7 @@ page = st.radio("Bölüm", pages, horizontal=True, label_visibility="collapsed")
 product_cols = [
     "barkod", "urun", "urun_grubu", "raf", "stok", "kritik_stok", "psf_final", "stok_degeri",
     "satilan_adet", "satis_tutari", "kar_tutari", "kar_marji", "gunluk_satis_hizi", "stok_bitis_gunu_goster",
-    "siparis_onerisi_ham", "siparis_tahmini_tutar_ham", "siparis_onerisi", "siparis_tahmini_tutar", "siparis_kisit_katsayisi", "abc_sinif", "aksiyon"
+    "siparis_segmenti", "siparis_filtre_gecer_mi", "teknik_siparis_onerisi_ham", "siparis_onerisi_ham", "siparis_tahmini_tutar_ham", "siparis_onerisi", "siparis_tahmini_tutar", "siparis_kisit_katsayisi", "abc_sinif", "aksiyon"
 ]
 
 
@@ -1489,7 +1543,7 @@ elif page == "🎯 AYÇA Asistan":
 
     s1, s2, s3, s4 = st.columns(4)
     with s1: make_mini_card("Önerilen Sipariş", money_fmt(order_budget_info["final_total"]), f"Stokun %{int(order_budget_info['budget_ratio']*100)} bütçesi", "alert-green")
-    with s2: make_mini_card("Satış Kaçırma Riski", str(len(urgent_df)), "Stokta yok ama satmış", "alert-red" if len(urgent_df) else "alert-green")
+    with s2: make_mini_card("Acil Sipariş", str(len(urgent_df)), "3+ satış veya <10.000 TL filtresi", "alert-red" if len(urgent_df) else "alert-green")
     with s3: make_mini_card("Sessiz Kâr Kaybı", str(business_insights['summary']['silent_loss_count']), money_fmt(business_insights['summary']['silent_loss_amount']), "alert-orange" if business_insights['summary']['silent_loss_count'] else "alert-green")
     with s4: make_mini_card("Hareketsiz Sermaye", money_fmt(business_insights['summary']['lost_candidate_value']), f"{business_insights['summary']['lost_candidate_count']} ürün", "alert-purple" if business_insights['summary']['lost_candidate_count'] else "alert-green")
 
@@ -1595,7 +1649,7 @@ if page == "🏠 Sabah Ekranı":
         st.markdown(f"<div class='exec-list-item'>{item}</div>", unsafe_allow_html=True)
 
     st.markdown('<div class="section-title">En Acil 20 Ürün</div>', unsafe_allow_html=True)
-    acil = pd.concat([urgent_df, fast_df, reorder_df], ignore_index=True).drop_duplicates("barkod").head(20)
+    acil = pd.concat([urgent_df, priority_df, reorder_df], ignore_index=True).drop_duplicates("barkod").head(20)
     st.dataframe(acil[product_cols], use_container_width=True, hide_index=True)
 
 elif page == "🛒 Sipariş Motoru":
@@ -1629,7 +1683,7 @@ elif page == "🛒 Sipariş Motoru":
     c1, c2, c3 = st.columns(3)
     with c1: make_mini_card("Sipariş Ürünü", str(len(reorder_df)), "Bütçe sonrası önerilen ürün", "alert-blue")
     with c2: make_mini_card("Önerilen Tutar", money_fmt(reorder_df["siparis_tahmini_tutar"].sum()), "Uygulanabilir liste", "alert-green")
-    with c3: make_mini_card("Acil Stok Riski", str(len(urgent_df)), "Satılmış ama stok 0/eksi", "alert-red" if len(urgent_df) else "alert-green")
+    with c3: make_mini_card("Reçete Geldikçe Al", str(len(rx_as_needed_df)), "Pahalı ve seyrek ürünler", "alert-purple" if len(rx_as_needed_df) else "alert-green")
 
     c5, c6 = st.columns(2)
     with c5:
@@ -1645,13 +1699,14 @@ elif page == "🛒 Sipariş Motoru":
         st.write(f"Kısılan tutar: {money_fmt(order_budget_info['cut_amount'])}")
         st.write(f"Orantı katsayısı: {num_fmt(order_budget_info['scale'], 2)}")
 
-    t1, t2, t3, t4 = st.tabs(["Bütçeli Sipariş Listesi", "Teknik Karşılaştırma", "Stokta Yok Satmış", "Hızlı Tükenen"])
+    t1, t2, t3, t4, t5 = st.tabs(["Bütçeli Sipariş Listesi", "Teknik Karşılaştırma", "Acil Sipariş", "Hızlı Tükenen", "Reçete Geldikçe Al"])
     with t1: st.dataframe(reorder_df[product_cols], use_container_width=True, hide_index=True)
     with t2:
-        compare_cols = ["barkod", "urun", "stok", "satilan_adet", "stok_bitis_gunu_goster", "siparis_onerisi_ham", "siparis_tahmini_tutar_ham", "siparis_onerisi", "siparis_tahmini_tutar", "siparis_kisit_katsayisi", "aksiyon"]
-        st.dataframe(product_master[product_master["siparis_onerisi_ham"] > 0][compare_cols].sort_values("siparis_tahmini_tutar_ham", ascending=False), use_container_width=True, hide_index=True)
+        compare_cols = ["barkod", "urun", "stok", "satilan_adet", "birim_satis", "stok_bitis_gunu_goster", "siparis_filtre_gecer_mi", "teknik_siparis_onerisi_ham", "siparis_onerisi_ham", "siparis_tahmini_tutar_ham", "siparis_onerisi", "siparis_tahmini_tutar", "siparis_kisit_katsayisi", "siparis_segmenti", "aksiyon"]
+        st.dataframe(product_master[product_master["teknik_siparis_onerisi_ham"] > 0][compare_cols].sort_values("teknik_siparis_onerisi_ham", ascending=False), use_container_width=True, hide_index=True)
     with t3: st.dataframe(urgent_df[product_cols], use_container_width=True, hide_index=True)
     with t4: st.dataframe(fast_df[product_cols], use_container_width=True, hide_index=True)
+    with t5: st.dataframe(rx_as_needed_df[product_cols], use_container_width=True, hide_index=True)
 
 elif page == "📦 Ürün Zekası":
     st.markdown('<div class="section-title">Ürün Performans Merkezi</div>', unsafe_allow_html=True)
