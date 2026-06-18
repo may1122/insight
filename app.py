@@ -1,5 +1,5 @@
 # ============================================================
-# AYÇA Insight V10.0 2026 SaaS - Sabah Brifingi + Risk Copilot
+# AYÇA Insight V10.1 2026 SaaS - Kontrol Merkezi + Asistan + Ürün Fırsatları
 # ------------------------------------------------------------
 # Zorunlu / Önerilen dosyalar:
 # 1) Envanter Exceli
@@ -43,7 +43,7 @@ import streamlit as st
 # STREAMLIT AYARI
 # ============================================================
 st.set_page_config(
-    page_title="AYÇA Insight V10.0 SaaS",
+    page_title="AYÇA Insight V10.1 2026 SaaS",
     page_icon="💊",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -113,49 +113,47 @@ st.markdown(
     .module-card {background:#FFFFFF; border:1px solid #E2E8F0; border-radius:22px; padding:18px; box-shadow:0 12px 30px rgba(15,23,42,.055); min-height:150px;}
     .module-title {font-size:17px; font-weight:950; color:#0F172A; margin-bottom:8px;}
     .module-desc {font-size:13px; color:#64748B; line-height:1.55;}
+
+    .login-wrap {min-height:82vh; display:grid; grid-template-columns:1.05fr .95fr; gap:28px; align-items:center; padding:26px 0;}
+    .login-hero {background:linear-gradient(135deg,#0F172A 0%,#1E3A8A 54%,#2563EB 100%); border-radius:34px; padding:34px; color:white; box-shadow:0 26px 70px rgba(37,99,235,.24); position:relative; overflow:hidden; min-height:520px;}
+    .login-hero:after {content:""; position:absolute; width:420px; height:420px; right:-150px; top:-150px; background:radial-gradient(circle,rgba(255,255,255,.22),rgba(255,255,255,0)); border-radius:999px;}
+    .login-logo {font-size:42px; font-weight:950; letter-spacing:-1.2px; line-height:1; color:white; margin-bottom:8px; position:relative; z-index:2;}
+    .login-logo span {display:block; font-size:20px; font-weight:850; color:#BFDBFE; letter-spacing:.2px; margin-top:8px;}
+    .login-title {font-size:28px; font-weight:950; letter-spacing:-.6px; margin:32px 0 10px 0; color:white; position:relative; z-index:2;}
+    .login-sub {font-size:15px; line-height:1.65; color:#DBEAFE; max-width:590px; position:relative; z-index:2;}
+    .login-features {display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:26px; position:relative; z-index:2;}
+    .login-feature {background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.20); border-radius:18px; padding:13px 14px; font-size:13px; font-weight:850; color:#F8FAFC;}
+    .login-footer-badges {display:flex; flex-wrap:wrap; gap:8px; margin-top:28px; position:relative; z-index:2;}
+    .login-badge {background:rgba(255,255,255,.14); border:1px solid rgba(255,255,255,.22); border-radius:999px; padding:8px 12px; font-size:12px; font-weight:900; color:white;}
+    .login-card {background:#FFFFFF; border:1px solid #E2E8F0; border-radius:30px; padding:30px; box-shadow:0 24px 70px rgba(15,23,42,.10);}
+    .login-card h2 {margin:0 0 6px 0; font-size:28px; font-weight:950; letter-spacing:-.6px; color:#0F172A;}
+    .login-card p {margin:0 0 22px 0; color:#64748B; font-size:14px; line-height:1.55;}
+    .demo-box {background:#F8FAFC; border:1px solid #E2E8F0; border-radius:20px; padding:15px; margin-top:16px; color:#334155; font-size:13px; line-height:1.6;}
+    .brief-grid {display:grid; grid-template-columns:1.05fr .95fr; gap:16px; margin:16px 0;}
+    .brief-hero {background:linear-gradient(135deg,#0F172A 0%,#1E3A8A 56%,#2563EB 100%); border-radius:30px; padding:24px; color:white; box-shadow:0 20px 54px rgba(37,99,235,.18); overflow:hidden; position:relative;}
+    .brief-hero:after {content:""; position:absolute; width:320px; height:320px; right:-110px; top:-120px; background:radial-gradient(circle,rgba(255,255,255,.20),rgba(255,255,255,0)); border-radius:999px;}
+    .brief-title {font-size:28px; font-weight:950; letter-spacing:-.7px; color:white; margin-bottom:8px; position:relative; z-index:2;}
+    .brief-sub {color:#DBEAFE; font-size:14px; line-height:1.55; position:relative; z-index:2; max-width:760px;}
+    .brief-score {font-size:64px; font-weight:950; letter-spacing:-2px; color:white; line-height:1; margin-top:18px; position:relative; z-index:2;}
+    .brief-score-label {font-size:13px; font-weight:900; color:#BFDBFE; position:relative; z-index:2;}
+    .brief-panel {background:#FFFFFF; border:1px solid #E2E8F0; border-radius:28px; padding:20px; box-shadow:0 16px 44px rgba(15,23,42,.07);}
+    .group-title {font-size:19px; font-weight:950; color:#0F172A; margin:22px 0 12px 0; letter-spacing:-.25px;}
+    .group-grid {display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; margin-bottom:14px;}
+    .compact-card {background:#FFFFFF; border:1px solid #E2E8F0; border-radius:20px; padding:16px; box-shadow:0 10px 28px rgba(15,23,42,.045); min-height:112px;}
+    .compact-k {font-size:11px; text-transform:uppercase; letter-spacing:.45px; color:#64748B; font-weight:950; margin-bottom:9px;}
+    .compact-v {font-size:25px; color:#0F172A; font-weight:950; letter-spacing:-.45px; margin-bottom:6px;}
+    .compact-n {font-size:12px; color:#64748B; line-height:1.4;}
+    .task-list {background:#FFFFFF; border:1px solid #E2E8F0; border-radius:24px; padding:18px; box-shadow:0 14px 36px rgba(15,23,42,.055);}
+    .task-item {display:flex; gap:10px; align-items:flex-start; border-bottom:1px solid #EEF2F7; padding:11px 0; color:#0F172A; font-size:14px; font-weight:760; line-height:1.45;}
+    .task-item:last-child {border-bottom:0;}
+    .risk-summary-card {background:#FFFFFF; border:1px solid #E2E8F0; border-radius:24px; padding:18px; box-shadow:0 14px 36px rgba(15,23,42,.055);}
+    .risk-line {display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px solid #EEF2F7; color:#0F172A; font-size:14px; font-weight:850;}
+    .risk-line:last-child {border-bottom:0;}
+    .risk-line span:last-child {font-size:17px; font-weight:950;}
+    @media (max-width:1000px){.login-wrap,.brief-grid{grid-template-columns:1fr;}.login-features,.group-grid{grid-template-columns:1fr 1fr;}}
+
     @media (max-width:1000px){.saas-grid{grid-template-columns:repeat(2,minmax(0,1fr));}.module-grid{grid-template-columns:1fr;}}
     @media (max-width:1000px){.exec-grid{grid-template-columns:1fr;}.ayca-header{display:block}.header-pill{display:inline-block;margin-top:10px}}
-
-
-    /* =====================================================
-       AYÇA V10 - 2026 SaaS Sabah Brifingi UI
-       Shopify + Stripe + Linear + Notion etkisi
-       ===================================================== */
-    .v10-hero {background:linear-gradient(135deg,#0F172A 0%,#172554 45%,#1D4ED8 100%);border-radius:32px;padding:26px;box-shadow:0 26px 70px rgba(37,99,235,.22);color:white;margin:14px 0 18px 0;position:relative;overflow:hidden;}
-    .v10-hero:after {content:"";position:absolute;right:-130px;top:-120px;width:360px;height:360px;border-radius:999px;background:radial-gradient(circle,rgba(255,255,255,.20),rgba(255,255,255,0));}
-    .v10-eyebrow {display:inline-block;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.22);border-radius:999px;padding:7px 12px;font-size:12px;font-weight:950;color:#DBEAFE;margin-bottom:12px;}
-    .v10-title {font-size:32px;font-weight:950;letter-spacing:-.8px;color:white;margin-bottom:8px;}
-    .v10-sub {font-size:14px;line-height:1.62;color:#DBEAFE;max-width:980px;}
-    .v10-hero-grid {display:grid;grid-template-columns:1.2fr .8fr;gap:16px;margin-top:18px;position:relative;z-index:1;}
-    .v10-score-card {background:rgba(255,255,255,.94);border:1px solid rgba(255,255,255,.55);border-radius:26px;padding:20px;color:#0F172A;box-shadow:0 18px 46px rgba(15,23,42,.16);}
-    .v10-score-label {font-size:12px;color:#64748B;font-weight:950;text-transform:uppercase;letter-spacing:.5px;}
-    .v10-score-number {font-size:72px;line-height:1;font-weight:950;letter-spacing:-3px;color:#2563EB;margin:8px 0 4px 0;}
-    .v10-score-note {font-size:13px;color:#64748B;line-height:1.45;}
-    .v10-brief-list {display:grid;gap:10px;}
-    .v10-brief-item {background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.20);border-radius:18px;padding:13px 14px;color:white;font-size:14px;font-weight:850;line-height:1.45;backdrop-filter:blur(10px);}
-    .v10-grid {display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin:14px 0 18px 0;}
-    .v10-card {background:#FFFFFF;border:1px solid #E2E8F0;border-radius:24px;padding:18px;box-shadow:0 14px 34px rgba(15,23,42,.055);min-height:138px;position:relative;overflow:hidden;}
-    .v10-card:after {content:"";position:absolute;right:-45px;bottom:-45px;width:125px;height:125px;border-radius:999px;background:radial-gradient(circle,rgba(37,99,235,.12),rgba(37,99,235,0));}
-    .v10-card-k {font-size:12px;color:#64748B;font-weight:950;text-transform:uppercase;letter-spacing:.45px;margin-bottom:10px;}
-    .v10-card-v {font-size:28px;color:#0F172A;font-weight:950;letter-spacing:-.5px;margin-bottom:6px;}
-    .v10-card-n {font-size:13px;color:#64748B;line-height:1.45;}
-    .v10-action-grid {display:grid;grid-template-columns:1.05fr .95fr;gap:16px;margin:16px 0 18px 0;}
-    .v10-panel {background:#FFFFFF;border:1px solid #E2E8F0;border-radius:26px;padding:20px;box-shadow:0 14px 34px rgba(15,23,42,.055);}
-    .v10-panel-title {font-size:22px;font-weight:950;letter-spacing:-.45px;color:#0F172A;margin-bottom:8px;}
-    .v10-panel-sub {font-size:13px;color:#64748B;line-height:1.5;margin-bottom:12px;}
-    .v10-task {display:flex;gap:12px;align-items:flex-start;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:18px;padding:13px 14px;margin:9px 0;color:#0F172A;}
-    .v10-task-check {width:22px;height:22px;border-radius:8px;background:#DCFCE7;border:1px solid #86EFAC;color:#166534;font-weight:950;text-align:center;line-height:20px;flex:0 0 auto;}
-    .v10-task-text {font-size:14px;line-height:1.45;font-weight:850;}
-    .v10-copilot {background:linear-gradient(135deg,#FFFFFF 0%,#EFF6FF 100%);border:1px solid #BFDBFE;border-radius:26px;padding:20px;box-shadow:0 14px 34px rgba(37,99,235,.075);}
-    .v10-copilot-title {font-size:20px;color:#1D4ED8;font-weight:950;margin-bottom:8px;}
-    .v10-copilot-text {font-size:14px;color:#0F172A;line-height:1.62;}
-    .v10-risk-strip {display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;margin:14px 0 18px 0;}
-    .v10-risk-pill {background:#FFFFFF;border:1px solid #E2E8F0;border-radius:20px;padding:15px;box-shadow:0 10px 26px rgba(15,23,42,.045);}
-    .v10-risk-pill-k {font-size:12px;color:#64748B;font-weight:950;text-transform:uppercase;letter-spacing:.35px;margin-bottom:8px;}
-    .v10-risk-pill-v {font-size:24px;color:#0F172A;font-weight:950;}
-    .v10-quick-buttons {display:flex;gap:10px;flex-wrap:wrap;margin-top:12px;}
-    @media (max-width:1100px){.v10-grid{grid-template-columns:repeat(2,minmax(0,1fr));}.v10-hero-grid{grid-template-columns:1fr;}.v10-action-grid{grid-template-columns:1fr;}.v10-risk-strip{grid-template-columns:repeat(2,minmax(0,1fr));}}
-
     </style>
     """,
     unsafe_allow_html=True,
@@ -199,34 +197,61 @@ def show_basic_info(message: str):
 
 
 def show_demo_auth_screen():
-    st.markdown("### 💊 AYÇA Insight Demo Giriş")
-    c1, c2 = st.columns([1.1, .9])
-    with c1:
-        st.markdown(
-            """
-            <div class="ai-card">
-                <div class="ai-title">AYÇA Insight V10.0 SaaS Sabah Brifingi</div>
-                <div class="ai-text">
-                Bu sürüm üç TEBEOS Excel çıktısını birlikte okur: <b>Envanter</b>, <b>Ürün Bazında Toplamlar</b> ve <b>Satış Hareketleri</b>.
-                Böylece ürün bazlı satış hızı, stok bitiş günü, sipariş tavsiyesi, ölü stok ve kârlılık motoru aktif olur.
+    st.markdown(
+        """
+        <div class="login-wrap">
+            <div class="login-hero">
+                <div class="login-logo">AYÇA<span>Insight</span></div>
+                <div class="login-title">Eczanenizin dijital operasyon merkezi</div>
+                <div class="login-sub">
+                    Stok, kârlılık, reçete süreçleri ve finansal riskleri tek ekranda yönetin.
+                    AYÇA Insight; TEBEOS verilerini karar destek ekranına dönüştürür.
+                </div>
+                <div class="login-features">
+                    <div class="login-feature">✓ Sipariş Karar Desteği</div>
+                    <div class="login-feature">✓ KKİ Risk Takibi</div>
+                    <div class="login-feature">✓ Kırmızı / Yeşil Reçete Yönetimi</div>
+                    <div class="login-feature">✓ Kârlılık ve Tahsilat Analizi</div>
+                    <div class="login-feature">✓ Envanter Sağlığı</div>
+                    <div class="login-feature">✓ Yapay Zekâ Destekli İçgörüler</div>
+                </div>
+                <div class="login-footer-badges">
+                    <div class="login-badge">Operasyon</div>
+                    <div class="login-badge">Finans</div>
+                    <div class="login-badge">Risk</div>
+                    <div class="login-badge">Yapay Zekâ</div>
                 </div>
             </div>
-            """,
-            unsafe_allow_html=True,
-        )
-    with c2:
-        username = st.text_input("Kullanıcı adı", value="premium")
-        password = st.text_input("Şifre", value="premium2026", type="password")
-        if st.button("🚀 Giriş Yap", use_container_width=True):
-            record = DEMO_USERS.get(username.strip().lower())
-            if record and password == record["password"]:
-                st.session_state["authenticated"] = True
-                st.session_state["auth_user"] = record["name"]
-                st.session_state["auth_pharmacy"] = record["pharmacy"]
-                st.session_state["membership"] = record["membership"]
-                safe_rerun()
-            else:
-                st.error("Kullanıcı adı veya şifre hatalı. Premium: premium / premium2026")
+            <div class="login-card">
+                <h2>Hoş geldiniz 👋</h2>
+                <p>AYÇA Insight'a giriş yaparak eczanenizin sabah brifingini, risklerini ve önerilerini görüntüleyin.</p>
+        """,
+        unsafe_allow_html=True,
+    )
+    username = st.text_input("Kullanıcı adı", value="premium")
+    password = st.text_input("Şifre", value="premium2026", type="password")
+    if st.button("🚀 Giriş Yap", use_container_width=True, type="primary"):
+        record = DEMO_USERS.get(username.strip().lower())
+        if record and password == record["password"]:
+            st.session_state["authenticated"] = True
+            st.session_state["auth_user"] = record["name"]
+            st.session_state["auth_pharmacy"] = record["pharmacy"]
+            st.session_state["membership"] = record["membership"]
+            safe_rerun()
+        else:
+            st.error("Kullanıcı adı veya şifre hatalı. Premium: premium / premium2026")
+    st.markdown(
+        """
+                <div class="demo-box">
+                    <b>Demo Hesaplar</b><br>
+                    Premium: <b>premium</b> / <b>premium2026</b><br>
+                    Basic: <b>basic</b> / <b>basic2026</b>
+                </div>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
 
 if "authenticated" not in st.session_state:
@@ -1464,7 +1489,7 @@ if st.sidebar.button("Çıkış Yap", use_container_width=True):
     safe_rerun()
 
 st.sidebar.title("💊 AYÇA Insight")
-st.sidebar.caption("V10.0 SaaS · Sabah Brifingi + Risk Copilot")
+st.sidebar.caption("V10.1 SaaS · Sabah Brifingi + Operasyon + Finans + Risk")
 eczane_adi = st.sidebar.text_input("Eczane Adı", value="İdil Eczanesi")
 kullanici_adi = st.sidebar.text_input("Kullanıcı", value="Abdullah Bey")
 
@@ -1506,7 +1531,7 @@ if inventory_file is None or product_file is None or sales_file is None:
         f"""
         <div class="ayca-header">
             <div class="ayca-title">
-                <h1>AYÇA Insight V10.0 SaaS</h1>
+                <h1>AYÇA Insight V10.1 2026 SaaS</h1>
                 <p>{eczane_adi} · Üç Excel dosyasını yükle: envanter, ürün bazında toplamlar, satış hareketleri.</p>
             </div>
             <div class="header-pill">Dosya bekleniyor</div>
@@ -1626,204 +1651,26 @@ match_ratio = safe_div(matched_count, len(product_barcodes))
 
 
 # ============================================================
-# HEADER + KPI
+# HEADER - SADE SAAS ÜST ALAN
 # ============================================================
 today_str = datetime.now().strftime("%d.%m.%Y")
 st.markdown(
     f"""
     <div class="ayca-header">
         <div class="ayca-title">
-            <h1>AYÇA Insight V10.0 SaaS</h1>
+            <h1>AYÇA Insight V10.1</h1>
             <p>{eczane_adi} · {selected_period} · Gün hesabı: {analysis_days} gün · {today_str}</p>
         </div>
-        <div class="header-pill">AYÇA Ürün Puanı: {score}/100 · {score_status(score)}</div>
+        <div class="header-pill">{get_membership()} Plan · Sağlık Skoru {score}/100</div>
     </div>
     """,
     unsafe_allow_html=True,
 )
-
-st.markdown(
-    f"""
-    <div class="saas-shell">
-        <div>
-            <span class="saas-badge">2026 SaaS Control Center</span>
-            <span class="saas-badge">{get_membership()} Plan</span>
-            <span class="saas-badge">3 Dosyalı TEBEOS Motoru</span>
-        </div>
-        <div class="saas-hero-title">Eczanenin bugün ne yapması gerektiğini tek sabah brifinginde gösterir.</div>
-        <div class="saas-hero-sub">AYÇA Insight; satış, stok, kârlılık, tahsilat, doktor, kurum ve hasta sadakat verilerini günlük aksiyonlara dönüştüren yapay zekâ destekli eczane karar destek platformudur.</div>
-    </div>
-    """,
-    unsafe_allow_html=True,
-)
-
-ciro_trend, ciro_class = rate_fmt(current_stats["ciro"], previous_stats["ciro"])
-profit_trend, profit_class = rate_fmt(current_stats["kar"], previous_stats["kar"])
-margin_trend, margin_class = rate_fmt(current_stats["marj"], previous_stats["marj"])
-
-k1, k2, k3, k4, k5 = st.columns(5)
-with k1: make_metric_card("Ciro", money_fmt(current_stats["ciro"]), selected_period, ciro_trend, ciro_class)
-with k2: make_metric_card("Brüt Kâr", money_fmt(current_stats["kar"]), "Satış hareketleri", profit_trend, profit_class)
-with k3: make_metric_card("Ürün Satış Tutarı", money_fmt(product_master["satis_tutari"].sum()), f"{num_fmt(product_master['satilan_adet'].sum(),0)} adet")
-with k4: make_metric_card("Stok Değeri", money_fmt(product_master["stok_degeri"].sum()), "Envanter + ürün raporu")
-with k5: make_metric_card("Bütçeli Sipariş", money_fmt(reorder_df["siparis_tahmini_tutar"].sum()), f"Limit: {money_fmt(order_budget_info['budget_limit'])} · {len(reorder_df)} ürün")
-
-r1, r2, r3, r4, r5 = st.columns(5)
-with r1: make_mini_card("Barkod Eşleşme", pct_fmt(match_ratio), f"{matched_count} / {len(product_barcodes)} ürün", "alert-green" if match_ratio >= .70 else "alert-orange")
-with r2: make_mini_card("Stokta Yok Satmış", str(len(urgent_df)), "Satılmış ama stok 0/eksi", "alert-red" if len(urgent_df) else "alert-green")
-with r3: make_mini_card("Ölü Stok", str(len(dead_df)), money_fmt(dead_df["stok_degeri"].sum()), "alert-orange" if len(dead_df) else "alert-green")
-with r4: make_mini_card("Yavaş Stok", str(len(slow_df)), money_fmt(slow_df["stok_degeri"].sum()), "alert-purple" if len(slow_df) else "alert-green")
-with r5: make_mini_card("Tahsilat Açığı", money_fmt(current_stats["tahsilat_acigi"]), f"Oran {pct_fmt(safe_div(current_stats['tahsilat_acigi'], current_stats['ciro']))}", "alert-red" if current_stats["tahsilat_acigi"] > 0 else "alert-green")
-
-risk1, risk2, risk3, risk4 = st.columns(4)
-with risk1: make_mini_card("🔴 Kırmızı Reçete", str(len(red_rx_df)), money_fmt(red_rx_df["stok_degeri"].sum()), "alert-red" if len(red_rx_df) else "")
-with risk2: make_mini_card("🟢 Yeşil Reçete", str(len(green_rx_df)), money_fmt(green_rx_df["stok_degeri"].sum()), "alert-green" if len(green_rx_df) else "")
-with risk3: make_mini_card("🟣 Ek İzlem", str(len(ek_izlem_df)), money_fmt(ek_izlem_df["stok_degeri"].sum()), "alert-purple" if len(ek_izlem_df) else "")
-with risk4: make_mini_card("💰 KKİ Risk", str(len(kki_df)), money_fmt(kki_df["satis_tutari"].sum()), "alert-orange" if len(kki_df) else "")
-
-# Kullanıcı dostu sipariş özeti: teknik ham/kısılmış detaylar ana ekrandan kaldırıldı.
-top_order_names_global = reorder_df.head(3)["urun"].tolist() if not reorder_df.empty else []
-top_order_html_global = "".join([f"<span style='display:inline-block;background:#EFF6FF;border:1px solid #BFDBFE;border-radius:999px;padding:6px 10px;margin:4px 6px 0 0;font-weight:800;color:#1E3A8A;'>{x}</span>" for x in top_order_names_global]) or "<span style='color:#64748B;font-weight:800;'>Acil sipariş önerisi yok</span>"
-st.markdown(
-    f"""
-    <div style="background:linear-gradient(135deg,#FFFFFF 0%,#ECFDF5 55%,#EFF6FF 100%);border:1px solid #BFDBFE;border-radius:26px;padding:20px;margin:14px 0 18px 0;box-shadow:0 14px 34px rgba(15,23,42,.07);">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;">
-            <div style="min-width:280px;flex:1;">
-                <div style="font-size:22px;font-weight:950;color:#0F172A;letter-spacing:-.4px;">🛒 AYÇA Sipariş Asistanı</div>
-                <div style="font-size:14px;color:#475569;line-height:1.55;margin-top:6px;">
-                    Mevcut stok değeriniz <b>{money_fmt(order_budget_info['stock_value'])}</b>. AYÇA bu ay için stokun <b>%{int(order_budget_info['budget_ratio']*100)}</b>'si kadar, yani <b>{money_fmt(order_budget_info['final_total'])}</b> sipariş öneriyor.
-                </div>
-                <div style="margin-top:10px;">{top_order_html_global}</div>
-            </div>
-            <div style="display:grid;grid-template-columns:repeat(3,minmax(140px,1fr));gap:12px;min-width:420px;flex:1;">
-                <div style="background:#FFFFFF;border:1px solid #D1FAE5;border-radius:18px;padding:14px;">
-                    <div style="font-size:12px;color:#64748B;font-weight:900;text-transform:uppercase;">📦 Mevcut Stok</div>
-                    <div style="font-size:24px;font-weight:950;color:#0F172A;margin-top:8px;">{money_fmt(order_budget_info['stock_value'])}</div>
-                </div>
-                <div style="background:#FFFFFF;border:1px solid #BFDBFE;border-radius:18px;padding:14px;">
-                    <div style="font-size:12px;color:#64748B;font-weight:900;text-transform:uppercase;">🎯 Önerilen Sipariş</div>
-                    <div style="font-size:24px;font-weight:950;color:#2563EB;margin-top:8px;">{money_fmt(order_budget_info['final_total'])}</div>
-                    <div style="font-size:12px;color:#64748B;margin-top:4px;">Bütçe kullanımı {pct_fmt(order_budget_info['budget_used_ratio'])}</div>
-                </div>
-                <div style="background:#FFFFFF;border:1px solid #FECACA;border-radius:18px;padding:14px;">
-                    <div style="font-size:12px;color:#64748B;font-weight:900;text-transform:uppercase;">🚨 Kritik Ürün</div>
-                    <div style="font-size:24px;font-weight:950;color:#DC2626;margin-top:8px;">{len(reorder_df)}</div>
-                    <div style="font-size:12px;color:#64748B;margin-top:4px;">sipariş bekliyor</div>
-                </div>
-            </div>
-        </div>
-        <div style="height:10px;background:#E2E8F0;border-radius:999px;overflow:hidden;margin-top:16px;">
-            <div style="height:10px;background:linear-gradient(90deg,#10B981,#2563EB);border-radius:999px;width:{min(100, max(0, order_budget_info['budget_used_ratio']*100))}%;"></div>
-        </div>
-    </div>
-    """,
-    unsafe_allow_html=True,
-)
-
-health_html = "".join([
-    f'<div class="health-row"><div class="health-head"><span>{k} <small>({score_weights[k]}%)</small></span><span>{v}/100</span></div><div class="health-bar-bg"><div class="health-bar-fill" style="width:{v}%;"></div></div></div>'
-    for k, v in score_items.items()
-])
-action_html = "".join([f"<div class='exec-list-item'>{item}</div>" for item in actions])
-st.markdown(
-    f"""
-    <div class="exec-grid">
-        <div class="exec-card">
-            <div class="exec-title">🤖 Günaydın {kullanici_adi}</div>
-            <div class="exec-sub">AYÇA üç dosyayı birleştirerek ürün bazlı satış, stok, sipariş ve risk analizini çıkardı.</div>
-            {action_html}
-        </div>
-        <div class="exec-card">
-            <div class="exec-sub">Ürün Zekâsı Puanı</div>
-            <div class="score-big">{score}</div>
-            <div class="exec-sub">Durum: <b>{score_status(score)}</b></div>
-            {health_html}
-            <div class="exec-list-item">📦 Ürün raporu: <b>{len(product_df)}</b> barkod · Envanter: <b>{len(inventory_df)}</b> barkod · Eşleşme: <b>{pct_fmt(match_ratio)}</b></div>
-        </div>
-    </div>
-    """,
-    unsafe_allow_html=True,
-)
-
-
-
-# ============================================================
-# V10 2026 SAAS SABAH BRİFİNGİ YARDIMCILARI
-# ============================================================
-def v10_safe_count(df: pd.DataFrame) -> int:
-    try:
-        return int(len(df))
-    except Exception:
-        return 0
-
-
-def v10_first_product(df: pd.DataFrame, fallback: str = "ürün") -> str:
-    try:
-        if df is not None and not df.empty and "urun" in df.columns:
-            return str(df.iloc[0]["urun"])
-    except Exception:
-        pass
-    return fallback
-
-
-def v10_build_tasks() -> list[str]:
-    tasks = []
-    if len(reorder_df) > 0:
-        first = v10_first_product(reorder_df, "ilk ürün")
-        tasks.append(f"📦 {first} başta olmak üzere {len(reorder_df)} ürün için sipariş listesini kontrol et.")
-    if len(urgent_df) > 0:
-        first = v10_first_product(urgent_df, "kritik ürün")
-        tasks.append(f"🚨 {first} dahil {len(urgent_df)} kritik üründe satış kaçırma riskini kapat.")
-    if len(kki_df) > 0:
-        first = v10_first_product(kki_df, "KKİ riskli ürün")
-        tasks.append(f"💰 {first} dahil {len(kki_df)} KKİ riskli ürünü finansal risk açısından incele.")
-    if len(red_rx_df) + len(green_rx_df) > 0:
-        tasks.append(f"🔐 Kontrollü reçete ürünlerini gözden geçir: {len(red_rx_df)} kırmızı, {len(green_rx_df)} yeşil ürün görünüyor.")
-    if len(dead_df) > 0:
-        tasks.append(f"🧊 {len(dead_df)} ölü stok ürününde bağlı sermaye ve raf aksiyonu planla.")
-    if current_stats.get("tahsilat_acigi", 0) > 0:
-        tasks.append(f"💳 {money_fmt(current_stats['tahsilat_acigi'])} tahsilat açığını kontrol et.")
-    if not tasks:
-        tasks.append("✅ Bugün kritik operasyon riski görünmüyor. Sipariş ve stok ritmini koru.")
-    return tasks[:6]
-
-
-def v10_copilot_text() -> str:
-    lowest = min(score_items, key=score_items.get) if score_items else "stok yönetimi"
-    highest = max(score_items, key=score_items.get) if score_items else "operasyon"
-    parts = []
-    parts.append(f"Bugün eczanenin genel skoru <b>{score}/100</b>. En güçlü alan <b>{highest}</b>, en çok dikkat isteyen alan ise <b>{lowest}</b>.")
-    if len(reorder_df) > 0:
-        parts.append(f"Sipariş motoru <b>{len(reorder_df)}</b> ürün için toplam <b>{money_fmt(order_budget_info['final_total'])}</b> bütçeli öneri oluşturdu.")
-    if len(kki_df) > 0:
-        parts.append(f"KKİ tarafında <b>{len(kki_df)}</b> ürün finansal takip gerektiriyor. Bu ürünlerin satış tutarı <b>{money_fmt(kki_df['satis_tutari'].sum())}</b> seviyesinde.")
-    if len(red_rx_df) or len(green_rx_df):
-        parts.append(f"Reçete merkezinde <b>{len(red_rx_df)}</b> kırmızı ve <b>{len(green_rx_df)}</b> yeşil reçete ürünü eşleşti.")
-    if current_stats.get("marj", 0) < 0.18:
-        parts.append("Brüt marj düşük seviyede. SGK, KKİ ve düşük marjlı ürün grupları birlikte incelenmeli.")
-    return " ".join(parts)
-
-
-def v10_task_html(tasks: list[str]) -> str:
-    html = ""
-    for item in tasks:
-        html += f"<div class='v10-task'><div class='v10-task-check'>✓</div><div class='v10-task-text'>{item}</div></div>"
-    return html
-
-
-def v10_quick_table(title: str, df: pd.DataFrame, cols: list[str], limit: int = 12):
-    st.markdown(f"<div class='section-title'>{title}</div>", unsafe_allow_html=True)
-    if df is None or df.empty:
-        st.info("Bu bölüm için eşleşen ürün bulunamadı.")
-        return
-    available = [c for c in cols if c in df.columns]
-    st.dataframe(df[available].head(limit), use_container_width=True, hide_index=True)
-
 
 # ============================================================
 # SAYFALAR
 # ============================================================
-pages = ["🏠 Sabah Brifingi", "🧭 Kontrol Merkezi", "🎯 AYÇA Asistan", "🏠 Sabah Ekranı", "🩺 Sağlık Karnesi", "🧯 Risk Merkezi", "🛒 Sipariş Motoru", "📦 Ürün Zekası", "🏆 Taşıyan Ürünler", "📉 Sessiz Kâr Kaybı", "💰 Kârlılık", "🧊 Ölü/Yavaş Stok", "📈 Ciro & Tahsilat", "👨‍⚕️ Doktor Intelligence", "🧑‍🤝‍🧑 Hasta Sadakat", "🏥 Kurum Intelligence", "🔐 Reçete Merkezi", "📥 Rapor"]
+pages = ["🏠 Sabah Brifingi", "📦 Operasyon Merkezi", "💰 Finans Merkezi", "🚨 Risk Merkezi", "👥 Hasta & Reçete Merkezi", "🤖 AYÇA Copilot", "📊 Raporlar"]
 if "active_page" not in st.session_state:
     st.session_state["active_page"] = pages[0]
 if st.session_state.get("active_page") not in pages:
@@ -1834,6 +1681,7 @@ page = st.radio(
     horizontal=True,
     label_visibility="collapsed",
     index=pages.index(st.session_state.get("active_page", pages[0])),
+    key="page_radio",
 )
 st.session_state["active_page"] = page
 
@@ -1846,205 +1694,142 @@ product_cols = [
 
 
 if page == "🏠 Sabah Brifingi":
-    v10_tasks = v10_build_tasks()
-    v10_copilot = v10_copilot_text()
-    v10_lowest_area = min(score_items, key=score_items.get) if score_items else "Operasyon"
-    v10_top_action = v10_tasks[0] if v10_tasks else "Bugün kritik aksiyon yok."
+    st.markdown('<div class="section-title">🏠 Sabah Brifingi</div>', unsafe_allow_html=True)
+    st.caption("Ana ekran sadeleştirildi: ekonomik sağlık, envanter sağlığı, risk özeti ve yapılacaklar.")
+
+    top_actions = actions[:5] if actions else ["Kritik aksiyon görünmüyor. Bugün genel takip yeterli."]
+    task_html = "".join([f"<div class='task-item'><span>☑</span><span>{item}</span></div>" for item in top_actions])
+    risk_total = len(red_rx_df) + len(green_rx_df) + len(ek_izlem_df) + len(kki_df)
 
     st.markdown(
         f"""
-        <div class="v10-hero">
-            <div class="v10-eyebrow">AYÇA Insight V10 · 2026 SaaS Sabah Brifingi</div>
-            <div class="v10-title">Günaydın {kullanici_adi} 👋</div>
-            <div class="v10-sub">
-                {eczane_adi} için satış, stok, reçete, KKİ, tahsilat ve sipariş verileri tek karar ekranına dönüştürüldü.
-                Bu sayfa grafik raporu değil; bugün ne yapılacağını gösteren yönetici brifingidir.
+        <div class="brief-grid">
+            <div class="brief-hero">
+                <div class="brief-title">Günaydın {kullanici_adi} 👋</div>
+                <div class="brief-sub">AYÇA bugün eczanenizin ekonomik, envanter ve risk durumunu sade bir sabah brifingine dönüştürdü.</div>
+                <div class="brief-score">{score}</div>
+                <div class="brief-score-label">Eczane Sağlık Skoru · {score_status(score)}</div>
             </div>
-            <div class="v10-hero-grid">
-                <div class="v10-brief-list">
-                    <div class="v10-brief-item">🚨 <b>{len(urgent_df)}</b> kritik stok / satış kaçırma riski</div>
-                    <div class="v10-brief-item">💰 <b>{len(kki_df)}</b> KKİ riskli ürün · Satış: <b>{money_fmt(kki_df['satis_tutari'].sum())}</b></div>
-                    <div class="v10-brief-item">🔐 <b>{len(red_rx_df)}</b> kırmızı · <b>{len(green_rx_df)}</b> yeşil reçete ürünü</div>
-                    <div class="v10-brief-item">📦 Bütçeli sipariş önerisi: <b>{money_fmt(order_budget_info['final_total'])}</b></div>
-                </div>
-                <div class="v10-score-card">
-                    <div class="v10-score-label">Eczane Karar Skoru</div>
-                    <div class="v10-score-number">{score}</div>
-                    <div class="v10-score-note">100 üzerinden. Durum: <b>{score_status(score)}</b>. En dikkat isteyen alan: <b>{v10_lowest_area}</b>.</div>
-                </div>
+            <div class="brief-panel">
+                <div class="group-title" style="margin-top:0;">🤖 AYÇA Bugün Ne Diyor?</div>
+                <div class="task-list">{task_html}</div>
             </div>
         </div>
         """,
         unsafe_allow_html=True,
     )
 
-    st.markdown(
-        f"""
-        <div class="v10-grid">
-            <div class="v10-card">
-                <div class="v10-card-k">Ciro</div>
-                <div class="v10-card-v">{money_fmt(current_stats['ciro'])}</div>
-                <div class="v10-card-n">{selected_period} · Brüt kâr {money_fmt(current_stats['kar'])}</div>
-            </div>
-            <div class="v10-card">
-                <div class="v10-card-k">Brüt Marj</div>
-                <div class="v10-card-v">{pct_fmt(current_stats['marj'])}</div>
-                <div class="v10-card-n">Karlılık ve SGK/KKİ etkisi birlikte izlenmeli.</div>
-            </div>
-            <div class="v10-card">
-                <div class="v10-card-k">Stok Değeri</div>
-                <div class="v10-card-v">{money_fmt(product_master['stok_degeri'].sum())}</div>
-                <div class="v10-card-n">Ölü stok: {money_fmt(dead_df['stok_degeri'].sum())}</div>
-            </div>
-            <div class="v10-card">
-                <div class="v10-card-k">Sipariş</div>
-                <div class="v10-card-v">{money_fmt(order_budget_info['final_total'])}</div>
-                <div class="v10-card-n">{len(reorder_df)} ürün için bütçeli öneri.</div>
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+    st.markdown('<div class="group-title">💰 Ekonomik Sağlık</div>', unsafe_allow_html=True)
+    e1, e2, e3, e4 = st.columns(4)
+    with e1: make_metric_card("Ciro", money_fmt(current_stats["ciro"]), selected_period, ciro_trend, ciro_class)
+    with e2: make_metric_card("Brüt Kâr", money_fmt(current_stats["kar"]), "Satış hareketleri", profit_trend, profit_class)
+    with e3: make_metric_card("Marj", pct_fmt(current_stats["marj"]), "Brüt kâr / ciro", margin_trend, margin_class)
+    with e4: make_metric_card("Tahsilat Açığı", money_fmt(current_stats["tahsilat_acigi"]), f"Oran {pct_fmt(safe_div(current_stats['tahsilat_acigi'], current_stats['ciro']))}", None, "metric-down")
 
-    st.markdown('<div class="v10-action-grid">', unsafe_allow_html=True)
-    left, right = st.columns([1.05, .95])
-    with left:
-        st.markdown(
-            f"""
-            <div class="v10-panel">
-                <div class="v10-panel-title">Bugün Yapılacaklar</div>
-                <div class="v10-panel-sub">Linear mantığı: grafik yerine tamamlanabilir aksiyonlar.</div>
-                {v10_task_html(v10_tasks)}
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-    with right:
-        st.markdown(
-            f"""
-            <div class="v10-copilot">
-                <div class="v10-copilot-title">🤖 AYÇA Copilot Yorumu</div>
-                <div class="v10-copilot-text">{v10_copilot}</div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-        q1, q2 = st.columns(2)
-        with q1:
-            if st.button("🛒 Siparişleri İncele", use_container_width=True, key="v10_go_order"):
-                st.session_state["active_page"] = "🛒 Sipariş Motoru"
-                safe_rerun()
-        with q2:
-            if st.button("🧯 Riskleri İncele", use_container_width=True, key="v10_go_risk"):
-                st.session_state["active_page"] = "🧯 Risk Merkezi"
-                safe_rerun()
-    st.markdown('</div>', unsafe_allow_html=True)
+    st.markdown('<div class="group-title">📦 Envanter Sağlığı</div>', unsafe_allow_html=True)
+    v1, v2, v3, v4 = st.columns(4)
+    with v1: make_mini_card("Stok Değeri", money_fmt(product_master["stok_degeri"].sum()), "Envanterde bağlı sermaye", "alert-blue")
+    with v2: make_mini_card("Kritik Stok", str(len(urgent_df)), "Satılmış / kritik seviyede ürün", "alert-red" if len(urgent_df) else "alert-green")
+    with v3: make_mini_card("Ölü Stok", str(len(dead_df)), money_fmt(dead_df["stok_degeri"].sum()), "alert-orange" if len(dead_df) else "alert-green")
+    with v4: make_mini_card("Yavaş Stok", str(len(slow_df)), money_fmt(slow_df["stok_degeri"].sum()), "alert-purple" if len(slow_df) else "alert-green")
 
-    st.markdown('<div class="section-title">Risk Merkezi Özeti</div>', unsafe_allow_html=True)
-    st.markdown(
-        f"""
-        <div class="v10-risk-strip">
-            <div class="v10-risk-pill"><div class="v10-risk-pill-k">🔴 Kırmızı</div><div class="v10-risk-pill-v">{len(red_rx_df)}</div></div>
-            <div class="v10-risk-pill"><div class="v10-risk-pill-k">🟢 Yeşil</div><div class="v10-risk-pill-v">{len(green_rx_df)}</div></div>
-            <div class="v10-risk-pill"><div class="v10-risk-pill-k">🟣 Mor</div><div class="v10-risk-pill-v">{int(product_master.get('mor_recete_mi', pd.Series(False, index=product_master.index)).sum()) if 'mor_recete_mi' in product_master.columns else 0}</div></div>
-            <div class="v10-risk-pill"><div class="v10-risk-pill-k">▼ Ek İzlem</div><div class="v10-risk-pill-v">{len(ek_izlem_df)}</div></div>
-            <div class="v10-risk-pill"><div class="v10-risk-pill-k">💰 KKİ</div><div class="v10-risk-pill-v">{len(kki_df)}</div></div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-    ctab1, ctab2, ctab3 = st.tabs(["🚨 İlk Öncelik", "💰 KKİ", "🔐 Reçete"])
-    with ctab1:
-        v10_quick_table("İlk Öncelikli Siparişler", reorder_df, product_cols, 12)
-    with ctab2:
-        v10_quick_table("KKİ Riskli Ürünler", kki_df, product_cols, 12)
-    with ctab3:
-        combined_rx = pd.concat([red_rx_df, green_rx_df, ek_izlem_df], ignore_index=True) if any([len(red_rx_df), len(green_rx_df), len(ek_izlem_df)]) else pd.DataFrame()
-        v10_quick_table("Reçete / Ek İzlem Ürünleri", combined_rx, product_cols, 12)
-
-elif page == "🧭 Kontrol Merkezi":
-    st.markdown('<div class="section-title">🧭 SaaS Kontrol Merkezi</div>', unsafe_allow_html=True)
-    st.caption("Bu bölüm eczacının uygulamayı açtığında ilk görmesi gereken yönetici ekranıdır: skor, risk, fırsat ve aksiyon.")
-
-    st.markdown(
-        f"""
-        <div class="saas-grid">
-            <div class="saas-tile">
-                <div class="saas-tile-k">Eczane Sağlık Skoru</div>
-                <div class="saas-tile-v">{score}/100</div>
-                <div class="saas-tile-n">Durum: <b>{score_status(score)}</b>. En düşük alan: <b>{min(score_items, key=score_items.get)}</b>.</div>
-            </div>
-            <div class="saas-tile">
-                <div class="saas-tile-k">Bugünkü Öncelik</div>
-                <div class="saas-tile-v">{len(actions)}</div>
-                <div class="saas-tile-n">AYÇA aksiyon üretti. İlk aksiyon: <b>{actions[0] if actions else 'Kritik aksiyon yok'}</b></div>
-            </div>
-            <div class="saas-tile">
-                <div class="saas-tile-k">Sipariş Bütçesi</div>
-                <div class="saas-tile-v">{money_fmt(order_budget_info['final_total'])}</div>
-                <div class="saas-tile-n">Stok değerinin %{int(order_budget_info['budget_ratio']*100)} oranına göre bütçeli öneri.</div>
-            </div>
-            <div class="saas-tile">
-                <div class="saas-tile-k">Veri Kalitesi</div>
-                <div class="saas-tile-v">{pct_fmt(match_ratio)}</div>
-                <div class="saas-tile-n">Ürün satış ve envanter barkod eşleşme oranı.</div>
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-    c1, c2 = st.columns([1.15, .85])
+    st.markdown('<div class="group-title">🚨 Risk Özeti</div>', unsafe_allow_html=True)
+    c1, c2 = st.columns([.95, 1.05])
     with c1:
-        st.markdown('<div class="section-title">Yönetici Aksiyonları</div>', unsafe_allow_html=True)
-        for item in actions[:6]:
-            st.markdown(f"<div class='exec-list-item'>{item}</div>", unsafe_allow_html=True)
+        st.markdown(
+            f"""
+            <div class="risk-summary-card">
+                <div class="risk-line"><span>🔴 Kırmızı Reçete</span><span>{len(red_rx_df)}</span></div>
+                <div class="risk-line"><span>🟢 Yeşil Reçete</span><span>{len(green_rx_df)}</span></div>
+                <div class="risk-line"><span>🟣 Mor Reçete</span><span>0</span></div>
+                <div class="risk-line"><span>▼ Ek İzlem</span><span>{len(ek_izlem_df)}</span></div>
+                <div class="risk-line"><span>💰 KKİ Risk</span><span>{len(kki_df)}</span></div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
     with c2:
-        st.markdown('<div class="section-title">Sağlık Karnesi</div>', unsafe_allow_html=True)
-        for k, v in score_items.items():
-            st.markdown(
-                f"<div class='health-row'><div class='health-head'><span>{k}</span><span>{v}/100</span></div><div class='health-bar-bg'><div class='health-bar-fill' style='width:{v}%;'></div></div></div>",
-                unsafe_allow_html=True,
-            )
+        st.markdown(
+            f"""
+            <div class="risk-summary-card">
+                <div class="group-title" style="margin-top:0;">🤖 AYÇA Önerileri</div>
+                <div class="task-item"><span>📦</span><span>{len(reorder_df)} ürün için bütçeli sipariş önerisi mevcut. Toplam öneri: <b>{money_fmt(order_budget_info['final_total'])}</b>.</span></div>
+                <div class="task-item"><span>💰</span><span>{len(kki_df)} KKİ riskli ürün tespit edildi. Satış tutarı: <b>{money_fmt(kki_df['satis_tutari'].sum())}</b>.</span></div>
+                <div class="task-item"><span>⚠️</span><span>Tahsilat açığı: <b>{money_fmt(current_stats['tahsilat_acigi'])}</b>.</span></div>
+                <div class="task-item"><span>🚨</span><span>Toplam risk etiketi bulunan ürün sayısı: <b>{risk_total}</b>.</span></div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
 
-    c3, c4 = st.columns(2)
-    with c3:
-        fig = px.line(daily_df, x="gun", y="ciro", markers=True, title="Günlük Ciro Trendi")
+elif page == "📦 Operasyon Merkezi":
+    st.markdown('<div class="section-title">📦 Operasyon Merkezi</div>', unsafe_allow_html=True)
+    op_tabs = st.tabs(["🛒 Sipariş Motoru", "📦 Ürün Zekası", "🏆 Taşıyan Ürünler", "🧊 Ölü / Yavaş Stok"])
+    with op_tabs[0]:
+        s1, s2, s3, s4 = st.columns(4)
+        with s1: make_mini_card("Bütçeli Sipariş", money_fmt(order_budget_info["final_total"]), f"Limit {money_fmt(order_budget_info['budget_limit'])}", "alert-green")
+        with s2: make_mini_card("Acil Sipariş", str(len(urgent_df)), "Satış kaçırma riski", "alert-red" if len(urgent_df) else "alert-green")
+        with s3: make_mini_card("Reçete Geldikçe Al", str(int(product_master.get("recete_geldikce_al_mi", pd.Series(False, index=product_master.index)).sum())), "Pahalı / seyrek ürün", "alert-purple")
+        with s4: make_mini_card("Bütçe Kullanımı", pct_fmt(order_budget_info["budget_used_ratio"]), "Sipariş önerisi", "alert-blue")
+        st.dataframe(reorder_df[product_cols].head(300), use_container_width=True, hide_index=True)
+    with op_tabs[1]:
+        st.dataframe(product_master[product_cols].head(500), use_container_width=True, hide_index=True)
+    with op_tabs[2]:
+        st.dataframe(business_insights.get("carrier_80", pd.DataFrame()).head(300), use_container_width=True, hide_index=True)
+    with op_tabs[3]:
+        t1, t2 = st.tabs(["Ölü Stok", "Yavaş Stok"])
+        with t1: st.dataframe(dead_df[product_cols].head(500), use_container_width=True, hide_index=True)
+        with t2: st.dataframe(slow_df[product_cols].head(500), use_container_width=True, hide_index=True)
+
+elif page == "💰 Finans Merkezi":
+    st.markdown('<div class="section-title">💰 Finans Merkezi</div>', unsafe_allow_html=True)
+    fin_tabs = st.tabs(["Karlılık", "Sessiz Kâr Kaybı", "Ciro & Tahsilat"])
+    with fin_tabs[0]:
+        k1, k2, k3, k4 = st.columns(4)
+        with k1: make_metric_card("Ciro", money_fmt(current_stats["ciro"]), selected_period, ciro_trend, ciro_class)
+        with k2: make_metric_card("Brüt Kâr", money_fmt(current_stats["kar"]), "Satış hareketleri", profit_trend, profit_class)
+        with k3: make_metric_card("Marj", pct_fmt(current_stats["marj"]), "Brüt kâr / ciro")
+        with k4: make_metric_card("Ortalama Sepet", money_fmt(current_stats["ortalama_sepet"]), f"{current_stats['islem']} işlem")
+        fig = px.line(daily_df, x="gun", y=["ciro", "kar"], markers=True, title="Günlük Ciro ve Kâr")
         st.plotly_chart(apply_plot_theme(fig, height=420), use_container_width=True)
-    with c4:
-        fig = px.bar(abc_df, x="abc_sinif", y="ciro", title="ABC Ürün Sınıflaması - Ciro")
-        st.plotly_chart(apply_plot_theme(fig, height=420), use_container_width=True)
+    with fin_tabs[1]:
+        silent_cols = [c for c in product_cols + ["tahmini_sessiz_kayip"] if c in business_insights.get("silent_loss", pd.DataFrame()).columns]
+        st.dataframe(business_insights.get("silent_loss", pd.DataFrame())[silent_cols].head(500), use_container_width=True, hide_index=True)
+    with fin_tabs[2]:
+        c1, c2 = st.columns(2)
+        with c1:
+            fig = px.line(daily_df, x="gun", y="ciro", markers=True, title="Günlük Ciro")
+            st.plotly_chart(apply_plot_theme(fig), use_container_width=True)
+        with c2:
+            fig = px.bar(payment_df, x="tahsilat", y="ciro", title="Tahsilat Tipine Göre Ciro")
+            st.plotly_chart(apply_plot_theme(fig), use_container_width=True)
+        st.dataframe(payment_df, use_container_width=True, hide_index=True)
 
-    st.markdown('<div class="section-title">Premium Modül Vitrini</div>', unsafe_allow_html=True)
-    st.markdown(
-        """
-        <div class="module-grid">
-            <div class="module-card"><div class="module-title">🔴 Kırmızı Reçete Merkezi</div><div class="module-desc">Kritik reçete gruplarında stok, hareket, risk ve olağandışı tüketim takibi için premium operasyon ekranı.</div></div>
-            <div class="module-card"><div class="module-title">🟢 Yeşil Reçete Merkezi</div><div class="module-desc">Yeşil reçete ürünlerinde tüketim, stok seviyesi, sipariş ihtiyacı ve düzenli kullanım davranışlarını izler.</div></div>
-            <div class="module-card"><div class="module-title">💰 KKİ Risk Merkezi</div><div class="module-desc">Kamu kurum iskontosu kaynaklı finansal risk, firma ödeme takibi ve tahmini fark kontrolü.</div></div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-    vc1, vc2, vc3 = st.columns(3)
-    with vc1:
-        if st.button("🔴 Kırmızı Reçete Ürünlerini Göster", use_container_width=True, key="go_red_rx"):
-            st.session_state["active_page"] = "🔐 Reçete Merkezi"
-            st.session_state["recete_view"] = "🔴 Kırmızı"
-            safe_rerun()
-    with vc2:
-        if st.button("🟢 Yeşil Reçete Ürünlerini Göster", use_container_width=True, key="go_green_rx"):
-            st.session_state["active_page"] = "🔐 Reçete Merkezi"
-            st.session_state["recete_view"] = "🟢 Yeşil"
-            safe_rerun()
-    with vc3:
-        if st.button("💰 KKİ Riskli Ürünleri Göster", use_container_width=True, key="go_kki"):
-            st.session_state["active_page"] = "🧯 Risk Merkezi"
-            st.session_state["risk_view"] = "💰 KKİ"
-            safe_rerun()
+elif page == "👥 Hasta & Reçete Merkezi":
+    st.markdown('<div class="section-title">👥 Hasta & Reçete Merkezi</div>', unsafe_allow_html=True)
+    hr_tabs = st.tabs(["👨‍⚕️ Doktor Analizi", "👥 Hasta Sadakati", "🏥 Kurum Analizi", "🔐 Reçete Takibi"])
+    with hr_tabs[0]:
+        if doctor_intel.get("doctor_kpi") is not None and not doctor_intel.get("doctor_kpi").empty:
+            st.dataframe(doctor_intel.get("doctor_kpi"), use_container_width=True, hide_index=True)
+        else:
+            st.info("Doktor analizi için satış hareketlerinde doktor alanı gerekir.")
+    with hr_tabs[1]:
+        patient_summary = patient_loyalty.get("summary", {})
+        h1, h2, h3 = st.columns(3)
+        with h1: make_mini_card("Aktif Hasta", str(patient_summary.get("aktif_hasta", 0)), "Son 12 ay", "alert-blue")
+        with h2: make_mini_card("VIP Hasta", str(patient_summary.get("vip_hasta", 0)), "Yüksek frekans / ciro", "alert-green")
+        with h3: make_mini_card("Kayıp Riski", str(patient_summary.get("kayip_riski", 0)), "Son 90 gündür gelmeyen", "alert-orange")
+        st.dataframe(patient_loyalty.get("frequency", pd.DataFrame()), use_container_width=True, hide_index=True)
+    with hr_tabs[2]:
+        st.dataframe(kurum_df, use_container_width=True, hide_index=True)
+    with hr_tabs[3]:
+        rec_tabs = st.tabs(["🔴 Kırmızı", "🟢 Yeşil", "🟣 Mor", "▼ Ek İzlem"])
+        with rec_tabs[0]: st.dataframe(red_rx_df[product_cols].head(300), use_container_width=True, hide_index=True)
+        with rec_tabs[1]: st.dataframe(green_rx_df[product_cols].head(300), use_container_width=True, hide_index=True)
+        with rec_tabs[2]: st.info("Mor reçete master listesi eklendiğinde bu bölüm otomatik dolacak.")
+        with rec_tabs[3]: st.dataframe(ek_izlem_df[product_cols].head(300), use_container_width=True, hide_index=True)
 
-elif page == "🎯 AYÇA Asistan":
+elif page == "🤖 AYÇA Copilot":
     st.markdown('<div class="section-title">🎯 AYÇA Asistan</div>', unsafe_allow_html=True)
     st.markdown(
         f"""
@@ -2450,7 +2235,7 @@ elif page == "🏥 Kurum Intelligence":
         st.markdown('<div class="section-title">Kurum Detay Tablosu</div>', unsafe_allow_html=True)
         st.dataframe(kurum_df, use_container_width=True, hide_index=True)
 
-elif page == "🧯 Risk Merkezi":
+elif page == "🚨 Risk Merkezi":
     st.markdown('<div class="section-title">🧯 Eczacı Risk Merkezi</div>', unsafe_allow_html=True)
     st.caption("Kırmızı/yeşil reçete, TİTCK ek izlem ve KKİ risklerini ürün bazlı satış-stok verisiyle birleştirir.")
 
@@ -2552,7 +2337,7 @@ elif page == "🔐 Reçete Merkezi":
     st.markdown("---")
     make_mini_card("Not", "KVKK uyumlu kullanım", "Bu modül hasta adı/TC/tanı göstermeden, sadece ürün bazlı kontrollü reçete stok ve satış takibi yapar.", "alert-purple")
 
-elif page == "📥 Rapor":
+elif page == "📊 Raporlar":
     st.markdown('<div class="section-title">Excel Raporu</div>', unsafe_allow_html=True)
     report = create_excel_report(
         product_master, sales_df, period_df, kurum_df, doktor_df, daily_df, weekday_df, hourly_df,
@@ -2560,7 +2345,7 @@ elif page == "📥 Rapor":
         patient_loyalty.get("frequency"), patient_loyalty.get("lost"), business_insights
     )
     st.download_button(
-        "📥 AYÇA Insight V9.2 KKİ Risk Merkezi Raporunu İndir",
+        "📥 AYÇA Insight V10.1 2026 SaaS Raporunu İndir",
         data=report,
         file_name=f"ayca_insight_v9_2_kki_risk_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
