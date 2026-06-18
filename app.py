@@ -1,5 +1,5 @@
 # ============================================================
-# AYÇA Insight V9.0 Risk Merkezi - Kontrol Merkezi + Asistan + Ürün Fırsatları
+# AYÇA Insight V9.2 KKİ Risk Merkezi - Kontrol Merkezi + Asistan + Ürün Fırsatları
 # ------------------------------------------------------------
 # Zorunlu / Önerilen dosyalar:
 # 1) Envanter Exceli
@@ -43,7 +43,7 @@ import streamlit as st
 # STREAMLIT AYARI
 # ============================================================
 st.set_page_config(
-    page_title="AYÇA Insight V9.0 Risk Merkezi",
+    page_title="AYÇA Insight V9.2 KKİ Risk Merkezi",
     page_icon="💊",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -164,7 +164,7 @@ def show_demo_auth_screen():
         st.markdown(
             """
             <div class="ai-card">
-                <div class="ai-title">AYÇA Insight V9.0 Risk Merkezi</div>
+                <div class="ai-title">AYÇA Insight V9.2 KKİ Risk Merkezi</div>
                 <div class="ai-text">
                 Bu sürüm üç TEBEOS Excel çıktısını birlikte okur: <b>Envanter</b>, <b>Ürün Bazında Toplamlar</b> ve <b>Satış Hareketleri</b>.
                 Böylece ürün bazlı satış hızı, stok bitiş günü, sipariş tavsiyesi, ölü stok ve kârlılık motoru aktif olur.
@@ -1465,7 +1465,7 @@ if inventory_file is None or product_file is None or sales_file is None:
         f"""
         <div class="ayca-header">
             <div class="ayca-title">
-                <h1>AYÇA Insight V9.0 Risk Merkezi</h1>
+                <h1>AYÇA Insight V9.2 KKİ Risk Merkezi</h1>
                 <p>{eczane_adi} · Üç Excel dosyasını yükle: envanter, ürün bazında toplamlar, satış hareketleri.</p>
             </div>
             <div class="header-pill">Dosya bekleniyor</div>
@@ -1592,7 +1592,7 @@ st.markdown(
     f"""
     <div class="ayca-header">
         <div class="ayca-title">
-            <h1>AYÇA Insight V9.0 Risk Merkezi</h1>
+            <h1>AYÇA Insight V9.2 KKİ Risk Merkezi</h1>
             <p>{eczane_adi} · {selected_period} · Gün hesabı: {analysis_days} gün · {today_str}</p>
         </div>
         <div class="header-pill">AYÇA Ürün Puanı: {score}/100 · {score_status(score)}</div>
@@ -1790,25 +1790,29 @@ if page == "🧭 Kontrol Merkezi":
         <div class="module-grid">
             <div class="module-card"><div class="module-title">🔴 Kırmızı Reçete Merkezi</div><div class="module-desc">Kritik reçete gruplarında stok, hareket, risk ve olağandışı tüketim takibi için premium operasyon ekranı.</div></div>
             <div class="module-card"><div class="module-title">🟢 Yeşil Reçete Merkezi</div><div class="module-desc">Yeşil reçete ürünlerinde tüketim, stok seviyesi, sipariş ihtiyacı ve düzenli kullanım davranışlarını izler.</div></div>
-            <div class="module-card"><div class="module-title">📄 Raporlu Hasta Merkezi</div><div class="module-desc">Rapor bitiş yaklaşımı, düzenli ilaç yenileme ihtimali ve stok hazırlığı için karar destek katmanı.</div></div>
+            <div class="module-card"><div class="module-title">💰 KKİ Risk Merkezi</div><div class="module-desc">Kamu kurum iskontosu kaynaklı finansal risk, firma ödeme takibi ve tahmini fark kontrolü.</div></div>
         </div>
         """,
         unsafe_allow_html=True,
     )
     vc1, vc2, vc3 = st.columns(3)
     with vc1:
-        if st.button("🔴 Kırmızı Reçete Ürünlerini Göster", use_container_width=True):
+        if st.button("🔴 Kırmızı Reçete Ürünlerini Göster", use_container_width=True, key="go_red_rx"):
             st.session_state["active_page"] = "🔐 Reçete Merkezi"
-            st.session_state["recete_tab_hint"] = "red"
+            st.session_state["page_radio"] = "🔐 Reçete Merkezi"
+            st.session_state["recete_view"] = "🔴 Kırmızı"
             safe_rerun()
     with vc2:
-        if st.button("🟢 Yeşil Reçete Ürünlerini Göster", use_container_width=True):
+        if st.button("🟢 Yeşil Reçete Ürünlerini Göster", use_container_width=True, key="go_green_rx"):
             st.session_state["active_page"] = "🔐 Reçete Merkezi"
-            st.session_state["recete_tab_hint"] = "green"
+            st.session_state["page_radio"] = "🔐 Reçete Merkezi"
+            st.session_state["recete_view"] = "🟢 Yeşil"
             safe_rerun()
     with vc3:
-        if st.button("📄 Reçete Merkezine Git", use_container_width=True):
-            st.session_state["active_page"] = "🔐 Reçete Merkezi"
+        if st.button("💰 KKİ Riskli Ürünleri Göster", use_container_width=True, key="go_kki"):
+            st.session_state["active_page"] = "🧯 Risk Merkezi"
+            st.session_state["page_radio"] = "🧯 Risk Merkezi"
+            st.session_state["risk_view"] = "💰 KKİ"
             safe_rerun()
 
 elif page == "🎯 AYÇA Asistan":
@@ -1826,7 +1830,7 @@ elif page == "🎯 AYÇA Asistan":
 
     s1, s2, s3, s4 = st.columns(4)
     with s1: make_mini_card("Önerilen Sipariş", money_fmt(order_budget_info["final_total"]), f"Stokun %{int(order_budget_info['budget_ratio']*100)} bütçesi", "alert-green")
-    with s2: make_mini_card("Acil Sipariş", str(len(urgent_df)), "3+ satış veya <10.000 TL filtresi", "alert-red" if len(urgent_df) else "alert-green")
+    with s2: make_mini_card("Acil Sipariş", str(len(urgent_df)), "10+ satış veya ≤15.000 TL filtresi", "alert-red" if len(urgent_df) else "alert-green")
     with s3: make_mini_card("Sessiz Kâr Kaybı", str(business_insights['summary']['silent_loss_count']), money_fmt(business_insights['summary']['silent_loss_amount']), "alert-orange" if business_insights['summary']['silent_loss_count'] else "alert-green")
     with s4: make_mini_card("Hareketsiz Sermaye", money_fmt(business_insights['summary']['lost_candidate_value']), f"{business_insights['summary']['lost_candidate_count']} ürün", "alert-purple" if business_insights['summary']['lost_candidate_count'] else "alert-green")
 
@@ -2237,20 +2241,33 @@ elif page == "🧯 Risk Merkezi":
         st.markdown('<div class="section-title">Risk Özeti</div>', unsafe_allow_html=True)
         st.dataframe(show_summary, use_container_width=True, hide_index=True)
 
-    tabs_risk = st.tabs(["🔴 Kırmızı", "🟢 Yeşil", "🟣 Ek İzlem", "💰 KKİ", "📋 Tüm Riskler"])
     risk_cols_show = [c for c in ["barkod", "urun", "risk_segmenti", "risk_tipi", "risk_kaynak", "stok", "stok_degeri", "satilan_adet", "satis_tutari", "birim_satis", "kki_birim_fark_tl", "kki_tahmini_fark_tl", "siparis_segmenti", "aksiyon"] if c in product_master.columns]
-    with tabs_risk[0]:
+    risk_view_options = ["🔴 Kırmızı", "🟢 Yeşil", "🟣 Ek İzlem", "💰 KKİ", "📋 Tüm Riskler"]
+    if st.session_state.get("risk_view") not in risk_view_options:
+        st.session_state["risk_view"] = risk_view_options[0]
+    risk_view = st.radio("Risk detay görünümü", risk_view_options, horizontal=True, key="risk_view")
+
+    if risk_view == "🔴 Kırmızı":
+        st.markdown("### 🔴 Kırmızı Reçeteli Ürünler")
         st.dataframe(red_rx_df[risk_cols_show], use_container_width=True, hide_index=True)
-    with tabs_risk[1]:
+    elif risk_view == "🟢 Yeşil":
+        st.markdown("### 🟢 Yeşil Reçeteli Ürünler")
         st.dataframe(green_rx_df[risk_cols_show], use_container_width=True, hide_index=True)
-    with tabs_risk[2]:
+    elif risk_view == "🟣 Ek İzlem":
+        st.markdown("### 🟣 Ek İzlem Ürünleri")
         st.dataframe(ek_izlem_df[risk_cols_show], use_container_width=True, hide_index=True)
-    with tabs_risk[3]:
-        st.dataframe(kki_df[risk_cols_show], use_container_width=True, hide_index=True)
-        if not kki_df.empty:
-            fig = px.bar(kki_df.head(15), x="urun", y="kki_tahmini_fark_tl", title="Tahmini KKİ Farkı - İlk 15 Ürün")
+    elif risk_view == "💰 KKİ":
+        st.markdown("### 💰 KKİ Riskli Ürünler")
+        if kki_df.empty:
+            st.info("Bu veri setinde KKİ listesiyle eşleşen ürün bulunamadı.")
+        else:
+            kki_show = kki_df[risk_cols_show].sort_values(["kki_tahmini_fark_tl", "satis_tutari"], ascending=[True, False])
+            st.dataframe(kki_show, use_container_width=True, hide_index=True)
+            fig = px.bar(kki_df.sort_values("kki_tahmini_fark_tl").head(15), x="urun", y="kki_tahmini_fark_tl", title="Tahmini KKİ Farkı - İlk 15 Ürün")
             st.plotly_chart(apply_plot_theme(fig, height=430), use_container_width=True)
-    with tabs_risk[4]:
+            st.warning("KKİ tutarları risk listesi ve satış adedi üzerinden tahmini gösterilir. Nihai kontrol eczane/SGK mutabakatıyla yapılmalıdır.")
+    else:
+        st.markdown("### 📋 Tüm Riskli Ürünler")
         st.dataframe(risk_df[risk_cols_show], use_container_width=True, hide_index=True)
 
 elif page == "🔐 Reçete Merkezi":
@@ -2273,32 +2290,30 @@ elif page == "🔐 Reçete Merkezi":
         "birim_satis", "stok_bitis_gunu_goster", "siparis_segmenti", "aksiyon"
     ] if c in product_master.columns]
 
-    hint = st.session_state.pop("recete_tab_hint", None)
-    tab_names = ["🔴 Kırmızı Reçeteli Ürünler", "🟢 Yeşil Reçeteli Ürünler", "📋 Tüm Kontrollü Reçeteler", "⚠️ Takip Gerekenler"]
-    tabs_recete = st.tabs(tab_names)
+    recete_view_options = ["🔴 Kırmızı", "🟢 Yeşil", "📋 Tüm Kontrollü", "⚠️ Takip Gereken"]
+    if st.session_state.get("recete_view") not in recete_view_options:
+        st.session_state["recete_view"] = recete_view_options[0]
+    recete_view = st.radio("Reçete merkezi görünümü", recete_view_options, horizontal=True, key="recete_view")
 
-    with tabs_recete[0]:
+    if recete_view == "🔴 Kırmızı":
         st.markdown("### 🔴 Kırmızı Reçeteli Ürünler")
         if red_rx_df.empty:
             st.info("Bu eczane verisinde kırmızı reçete listesiyle eşleşen ürün bulunamadı.")
         else:
             st.dataframe(red_rx_df[recete_cols_show].sort_values(["stok_degeri", "satis_tutari"], ascending=False), use_container_width=True, hide_index=True)
-
-    with tabs_recete[1]:
+    elif recete_view == "🟢 Yeşil":
         st.markdown("### 🟢 Yeşil Reçeteli Ürünler")
         if green_rx_df.empty:
             st.info("Bu eczane verisinde yeşil reçete listesiyle eşleşen ürün bulunamadı.")
         else:
             st.dataframe(green_rx_df[recete_cols_show].sort_values(["satis_tutari", "satilan_adet"], ascending=False), use_container_width=True, hide_index=True)
-
-    with tabs_recete[2]:
+    elif recete_view == "📋 Tüm Kontrollü":
         st.markdown("### 📋 Tüm Kontrollü Reçeteler")
         if controlled_df.empty:
             st.info("Kırmızı/yeşil reçete eşleşmesi yok. Risk master dosyasını barkodlu yüklersen eşleşme oranı artar.")
         else:
             st.dataframe(controlled_df[recete_cols_show].sort_values(["risk_segmenti", "satis_tutari"], ascending=[True, False]), use_container_width=True, hide_index=True)
-
-    with tabs_recete[3]:
+    else:
         st.markdown("### ⚠️ Takip Gereken Kontrollü Ürünler")
         if controlled_order_df.empty:
             st.success("Kontrollü reçete ürünlerinde teknik sipariş/stok takip sinyali görünmüyor.")
@@ -2316,9 +2331,9 @@ elif page == "📥 Rapor":
         patient_loyalty.get("frequency"), patient_loyalty.get("lost"), business_insights
     )
     st.download_button(
-        "📥 AYÇA Insight V9.0 Risk Merkezi Raporunu İndir",
+        "📥 AYÇA Insight V9.2 KKİ Risk Merkezi Raporunu İndir",
         data=report,
-        file_name=f"ayca_insight_v8_1_saas_rapor_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx",
+        file_name=f"ayca_insight_v9_2_kki_risk_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         use_container_width=True,
     )
