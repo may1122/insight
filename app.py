@@ -1,5 +1,5 @@
 # ============================================================
-# AYÇA Insight V10.1 2026 SaaS - Kontrol Merkezi + Asistan + Ürün Fırsatları
+# AYÇA Insight V10.2 Executive Dashboard - Kontrol Merkezi + Asistan + Ürün Fırsatları
 # ------------------------------------------------------------
 # Zorunlu / Önerilen dosyalar:
 # 1) Envanter Exceli
@@ -43,7 +43,7 @@ import streamlit as st
 # STREAMLIT AYARI
 # ============================================================
 st.set_page_config(
-    page_title="AYÇA Insight V10.1 2026 SaaS",
+    page_title="AYÇA Insight V10.2 Executive Dashboard",
     page_icon="💊",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -170,6 +170,9 @@ st.markdown(
     <style>
     .login-shell {
         min-height: calc(100vh - 70px);
+        width: min(1680px, calc(100vw - 48px));
+        margin-left: 50%;
+        transform: translateX(-50%);
         display:grid;
         grid-template-columns: 1.12fr .88fr;
         gap:28px;
@@ -347,7 +350,7 @@ def show_demo_auth_screen():
                     <div class="login-feature">✓ Stok ve sermaye kontrolü</div>
                     <div class="login-feature">✓ Yapay zekâ destekli içgörüler</div>
                 </div>
-                <div class="login-version">AYÇA Insight V10.2 · 2026 SaaS</div>
+                <div class="login-version">AYÇA Insight V10.2 · Executive Dashboard</div>
             </div>
             <div class="login-right">
                 <div class="login-card-title">Hoş geldiniz 👋</div>
@@ -1661,7 +1664,7 @@ if inventory_file is None or product_file is None or sales_file is None:
         f"""
         <div class="ayca-header">
             <div class="ayca-title">
-                <h1>AYÇA Insight V10.1 2026 SaaS</h1>
+                <h1>AYÇA Insight V10.2 Executive Dashboard</h1>
                 <p>{eczane_adi} · Üç Excel dosyasını yükle: envanter, ürün bazında toplamlar, satış hareketleri.</p>
             </div>
             <div class="header-pill">Dosya bekleniyor</div>
@@ -2477,7 +2480,7 @@ elif page == "📊 Raporlar":
         patient_loyalty.get("frequency"), patient_loyalty.get("lost"), business_insights
     )
     st.download_button(
-        "📥 AYÇA Insight V10.1 2026 SaaS Raporunu İndir",
+        "📥 AYÇA Insight V10.2 Executive Dashboard Raporunu İndir",
         data=report,
         file_name=f"ayca_insight_v9_2_kki_risk_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
