@@ -170,7 +170,7 @@ st.markdown(
     @media (max-width:1000px){.exec-grid{grid-template-columns:1fr;}.ayca-header{display:block}.header-pill{display:inline-block;margin-top:10px}}
 
 
-    /* V10.7.2 - Her merkeze özel renkli üst hero kartları */
+    /* V10.7.2/10.7.3 - Her merkeze özel renkli üst hero kartları ve section skins */
     .module-hero-v2 {
         position:relative;
         overflow:hidden;
@@ -224,6 +224,55 @@ st.markdown(
     .hero-orange {background:linear-gradient(135deg,#9A3412 0%,#EA580C 55%,#F97316 100%);}
     .hero-purple {background:linear-gradient(135deg,#4C1D95 0%,#7C3AED 55%,#A855F7 100%);}
     .hero-navy {background:linear-gradient(135deg,#020617 0%,#0F172A 50%,#1E3A8A 100%);}
+
+    /* V10.7.3 - Section Skins: merkez bazlı hafif renkli atmosfer */
+    .skin-page-note {display:none;}
+    .module-hero-v2 {margin-bottom:18px;}
+
+    /* Sekmeye göre genel uygulama zemini */
+    [data-testid="stAppViewContainer"] {
+        background: var(--page-skin-bg, #F8FAFC) !important;
+    }
+
+    /* Sekmeye göre üst radio/pill alanını biraz daha ürün gibi göster */
+    div[role="radiogroup"] {
+        background: rgba(255,255,255,.74);
+        border: 1px solid rgba(226,232,240,.92);
+        border-radius: 999px;
+        padding: 6px;
+        box-shadow: 0 10px 28px rgba(15,23,42,.045);
+        backdrop-filter: blur(10px);
+    }
+
+    /* Sekme içindeki kartlar beyaz kalır ama merkezin rengini taşıyan çizgi alır */
+    .metric-card, .mini-card, .risk-summary-card, .task-list, .exec-card, .ai-card {
+        border-left: 4px solid var(--page-accent, #2563EB) !important;
+    }
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 8px;
+        background: rgba(255,255,255,.72);
+        border: 1px solid rgba(226,232,240,.88);
+        border-radius: 18px;
+        padding: 6px;
+        box-shadow: 0 10px 26px rgba(15,23,42,.04);
+    }
+    .stTabs [data-baseweb="tab"] {
+        border-radius: 14px;
+        font-weight: 850;
+        color: #334155;
+    }
+    .stTabs [aria-selected="true"] {
+        background: color-mix(in srgb, var(--page-accent, #2563EB) 12%, white) !important;
+        color: #0F172A !important;
+    }
+
+    /* Dataframe ve grafik alanları beyaz kalıp premium kart gibi dursun */
+    [data-testid="stDataFrame"], [data-testid="stPlotlyChart"] {
+        background: rgba(255,255,255,.88);
+        border-radius: 18px;
+        box-shadow: 0 10px 26px rgba(15,23,42,.04);
+    }
+
     @media (max-width:1000px){.module-hero-v2{grid-template-columns:1fr;}.module-hero-kpis{grid-template-columns:1fr 1fr;}}
     @media (max-width:620px){.module-hero-kpis{grid-template-columns:1fr;}.module-hero-title{font-size:25px;}.module-hero-score{font-size:44px;}}
 
@@ -781,6 +830,60 @@ def make_mini_card(title, value, note, css_class=""):
         unsafe_allow_html=True,
     )
 
+
+
+
+def apply_section_skin(theme: str):
+    """Sayfanın tamamına hafif renkli atmosfer ve kartlara tema çizgisi verir."""
+    themes = {
+        "brief": {
+            "bg": "linear-gradient(180deg,#EFF6FF 0%,#F8FAFC 48%,#FFFFFF 100%)",
+            "accent": "#2563EB",
+        },
+        "operation": {
+            "bg": "linear-gradient(180deg,#EFF6FF 0%,#F8FAFC 48%,#FFFFFF 100%)",
+            "accent": "#2563EB",
+        },
+        "finance": {
+            "bg": "linear-gradient(180deg,#ECFDF5 0%,#F8FAFC 48%,#FFFFFF 100%)",
+            "accent": "#10B981",
+        },
+        "risk": {
+            "bg": "linear-gradient(180deg,#FFF7ED 0%,#F8FAFC 48%,#FFFFFF 100%)",
+            "accent": "#F97316",
+        },
+        "patient": {
+            "bg": "linear-gradient(180deg,#F5F3FF 0%,#F8FAFC 48%,#FFFFFF 100%)",
+            "accent": "#A855F7",
+        },
+        "copilot": {
+            "bg": "linear-gradient(180deg,#E0E7FF 0%,#F8FAFC 48%,#FFFFFF 100%)",
+            "accent": "#1E3A8A",
+        },
+        "report": {
+            "bg": "linear-gradient(180deg,#F1F5F9 0%,#F8FAFC 48%,#FFFFFF 100%)",
+            "accent": "#64748B",
+        },
+    }
+    t = themes.get(theme, themes["brief"])
+    st.markdown(
+        f"""
+        <style>
+        :root {{
+            --page-skin-bg: {t['bg']};
+            --page-accent: {t['accent']};
+        }}
+        [data-testid="stAppViewContainer"] {{
+            background: {t['bg']} !important;
+        }}
+        [data-testid="stHeader"] {{
+            background: color-mix(in srgb, {t['accent']} 7%, rgba(248,250,252,.92)) !important;
+            backdrop-filter: blur(12px);
+        }}
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
 
 def render_module_hero(theme: str, eyebrow: str, title: str, desc: str, score_value: str, score_label: str, kpis: list[tuple[str, str]]):
     """Modül girişlerinde görsel kimlik veren renkli hero kart."""
@@ -2162,6 +2265,18 @@ page = st.radio(
     key="page_radio",
 )
 st.session_state["active_page"] = page
+
+# V10.7.3: Sayfa/merkez bazlı hafif renkli atmosfer
+skin_map = {
+    "🏠 Sabah Brifingi": "brief",
+    "📦 Operasyon Merkezi": "operation",
+    "💰 Finans Merkezi": "finance",
+    "🚨 Risk Merkezi": "risk",
+    "👥 Hasta & Reçete Merkezi": "patient",
+    "🤖 AYÇA Copilot": "copilot",
+    "📊 Raporlar": "report",
+}
+apply_section_skin(skin_map.get(page, "brief"))
 
 product_cols = [
     "barkod", "urun", "urun_grubu", "raf", "stok", "kritik_stok", "psf_final", "stok_degeri",
