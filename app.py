@@ -508,7 +508,7 @@ def show_demo_auth_screen():
                     <div class="login-clean-feature">✓ Stok ve sermaye kontrolü</div>
                     <div class="login-clean-feature">✓ Yapay zekâ destekli içgörüler</div>
                 </div>
-                <div class="login-clean-version">AYÇA Insight V10.6 · Copilot Health Analysis</div>
+                <div class="login-clean-version">AYÇA Insight V10.8 · Copilot Health Analysis</div>
             </div>
             """,
             unsafe_allow_html=True,
@@ -1955,6 +1955,30 @@ abc_df = product_master.groupby("abc_sinif", as_index=False).agg(urun_sayisi=("b
 group_df = product_master.groupby("urun_grubu", as_index=False).agg(urun_sayisi=("barkod", "count"), satilan_adet=("satilan_adet", "sum"), ciro=("satis_tutari", "sum"), kar=("kar_tutari", "sum"), stok_degeri=("stok_degeri", "sum"), siparis_onerisi=("siparis_onerisi", "sum")).sort_values("ciro", ascending=False)
 group_df["marj"] = np.where(group_df["ciro"] > 0, group_df["kar"] / group_df["ciro"], 0)
 
+# Görsel yoğunluk için özet veri setleri. Bu alanlar pasta/bar grafiklerde kullanılır;
+# karar tablosunun yerine geçmez, ekrana hızlı okuma gücü katar.
+stock_segment_visual_df = pd.DataFrame()
+if "siparis_segmenti" in product_master.columns:
+    stock_segment_visual_df = product_master.groupby("siparis_segmenti", as_index=False).agg(
+        urun_sayisi=("barkod", "count"),
+        stok_degeri=("stok_degeri", "sum"),
+        satis_tutari=("satis_tutari", "sum"),
+    ).sort_values("urun_sayisi", ascending=False)
+
+patient_segment_visual_df = pd.DataFrame()
+_patient_summary = patient_loyalty.get("summary", {}) if isinstance(patient_loyalty, dict) else {}
+if _patient_summary:
+    _active_patient = int(_patient_summary.get("aktif_hasta", 0) or 0)
+    _vip_patient = int(_patient_summary.get("vip_hasta", 0) or 0)
+    _lost_patient = int(_patient_summary.get("kayip_riski", 0) or 0)
+    _regular_patient = max(_active_patient - _vip_patient - _lost_patient, 0)
+    patient_segment_visual_df = pd.DataFrame([
+        {"segment": "VIP", "hasta_sayisi": _vip_patient},
+        {"segment": "Kayıp riski", "hasta_sayisi": _lost_patient},
+        {"segment": "Düzenli / diğer", "hasta_sayisi": _regular_patient},
+    ])
+    patient_segment_visual_df = patient_segment_visual_df[patient_segment_visual_df["hasta_sayisi"] > 0]
+
 risk_summary_df = risk_summary_table(product_master)
 risk_df = product_master[product_master.get("risk_var_mi", False)].sort_values(["risk_segmenti", "satis_tutari"], ascending=[True, False])
 red_rx_df = product_master[product_master.get("kirmizi_recete_mi", False)].sort_values("satis_tutari", ascending=False)
@@ -1977,7 +2001,7 @@ st.markdown(
     f"""
     <div class="ayca-header">
         <div class="ayca-title">
-            <h1>AYÇA Insight V10.6</h1>
+            <h1>AYÇA Insight V10.8</h1>
             <p>{eczane_adi} · {period_label} · Gün hesabı: {analysis_days} gün · {today_str}</p>
         </div>
         <div class="header-pill">{get_membership()} Plan · Sağlık Skoru {score}/100</div>
@@ -2299,8 +2323,39 @@ elif page == "📦 Operasyon Merkezi":
         with s2: make_mini_card("Acil Sipariş", str(len(urgent_df)), "Satış kaçırma riski", "alert-red" if len(urgent_df) else "alert-green")
         with s3: make_mini_card("Reçete Geldikçe Al", str(int(product_master.get("recete_geldikce_al_mi", pd.Series(False, index=product_master.index)).sum())), "Pahalı / seyrek ürün", "alert-purple")
         with s4: make_mini_card("Bütçe Kullanımı", pct_fmt(order_budget_info["budget_used_ratio"]), "Sipariş önerisi", "alert-blue")
+
+        vleft, vright = st.columns(2)
+        with vleft:
+            if not stock_segment_visual_df.empty and stock_segment_visual_df["urun_sayisi"].sum() > 0:
+                fig = px.pie(stock_segment_visual_df, names="siparis_segmenti", values="urun_sayisi", title="Sipariş / Stok Segment Dağılımı")
+                st.plotly_chart(apply_plot_theme(fig, height=390), use_container_width=True)
+            else:
+                st.info("Stok segment grafiği için yeterli veri bulunamadı.")
+        with vright:
+            top_stock_chart = capital_df[["urun", "stok_degeri"]].head(10).copy()
+            if not top_stock_chart.empty:
+                fig = px.bar(top_stock_chart, x="stok_degeri", y="urun", orientation="h", title="Stokta En Çok Sermaye Bağlayan 10 Ürün")
+                st.plotly_chart(apply_plot_theme(fig, height=390), use_container_width=True)
+            else:
+                st.info("Stok değeri grafiği için yeterli veri bulunamadı.")
+
         st.dataframe(reorder_df[product_cols].head(300), use_container_width=True, hide_index=True)
     with op_tabs[1]:
+        gleft, gright = st.columns(2)
+        with gleft:
+            group_pie = group_df[group_df["ciro"] > 0].sort_values("ciro", ascending=False).head(8)
+            if not group_pie.empty:
+                fig = px.pie(group_pie, names="urun_grubu", values="ciro", title="Ürün Grubu Ciro Dağılımı")
+                st.plotly_chart(apply_plot_theme(fig, height=390), use_container_width=True)
+            else:
+                st.info("Ürün grubu ciro dağılımı için yeterli veri yok.")
+        with gright:
+            group_bar = group_df[group_df["kar"] > 0].sort_values("kar", ascending=False).head(10)
+            if not group_bar.empty:
+                fig = px.bar(group_bar, x="kar", y="urun_grubu", orientation="h", title="Ürün Grubu Kâr Katkısı")
+                st.plotly_chart(apply_plot_theme(fig, height=390), use_container_width=True)
+            else:
+                st.info("Ürün grubu kâr grafiği için yeterli veri yok.")
         st.dataframe(product_master[product_cols].head(500), use_container_width=True, hide_index=True)
     with op_tabs[2]:
         st.dataframe(business_insights.get("carrier_80", pd.DataFrame()).head(300), use_container_width=True, hide_index=True)
@@ -2338,6 +2393,22 @@ elif page == "💰 Finans Merkezi":
         else:
             st.info("Günlük ciro/kâr grafiği için yeterli veri bulunamadı.")
 
+        fleft, fright = st.columns(2)
+        with fleft:
+            profit_mix = group_df[group_df["kar"] > 0].sort_values("kar", ascending=False).head(7)
+            if _px_finance is not None and not profit_mix.empty:
+                fig = _px_finance.pie(profit_mix, names="urun_grubu", values="kar", title="Kârın Ürün Gruplarına Dağılımı")
+                st.plotly_chart(apply_plot_theme(fig, height=380), use_container_width=True)
+            else:
+                st.info("Kâr dağılımı için yeterli ürün grubu verisi yok.")
+        with fright:
+            if _px_finance is not None and not profit_df.empty:
+                top_profit_chart = profit_df[["urun", "kar_tutari"]].head(10)
+                fig = _px_finance.bar(top_profit_chart, x="kar_tutari", y="urun", orientation="h", title="En Çok Kâr Bırakan 10 Ürün")
+                st.plotly_chart(apply_plot_theme(fig, height=380), use_container_width=True)
+            else:
+                st.info("Ürün bazlı kâr grafiği için yeterli veri yok.")
+
     with fin_tabs[1]:
         silent_df = business_insights.get("silent_loss", pd.DataFrame())
         silent_cols = [c for c in product_cols + ["tahmini_sessiz_kayip"] if c in silent_df.columns]
@@ -2356,7 +2427,7 @@ elif page == "💰 Finans Merkezi":
                 st.info("Günlük ciro grafiği için yeterli veri bulunamadı.")
         with c2:
             if _px_finance is not None and payment_df is not None and not payment_df.empty and {"tahsilat", "ciro"}.issubset(payment_df.columns):
-                fig = _px_finance.bar(payment_df, x="tahsilat", y="ciro", title="Tahsilat Tipine Göre Ciro")
+                fig = _px_finance.pie(payment_df, names="tahsilat", values="ciro", title="Tahsilat Dağılımı")
                 st.plotly_chart(apply_plot_theme(fig), use_container_width=True)
             else:
                 st.info("Tahsilat tipi grafiği için yeterli veri bulunamadı.")
@@ -2378,11 +2449,28 @@ elif page == "👥 Hasta & Reçete Merkezi":
     st.markdown('<div class="section-title">👥 Hasta & Reçete Merkezi</div>', unsafe_allow_html=True)
     hr_tabs = st.tabs(["👨‍⚕️ Doktor Analizi", "👥 Hasta Sadakati", "🏥 Kurum Analizi", "🔐 Reçete Takibi"])
     with hr_tabs[0]:
-        if doctor_intel.get("doctor_kpi") is not None and not doctor_intel.get("doctor_kpi").empty:
-            st.dataframe(doctor_intel.get("doctor_kpi"), use_container_width=True, hide_index=True)
+        doctor_kpi_view = doctor_intel.get("doctor_kpi")
+        if doctor_kpi_view is not None and not doctor_kpi_view.empty:
+            dleft, dright = st.columns(2)
+            with dleft:
+                top_doc = doctor_kpi_view.sort_values("ciro", ascending=False).head(10)
+                fig = px.bar(top_doc, x="ciro", y="doktor_clean", orientation="h", title="En Çok Ciro Getiren 10 Doktor")
+                st.plotly_chart(apply_plot_theme(fig, height=390), use_container_width=True)
+            with dright:
+                top_doc_pie = doctor_kpi_view.sort_values("ciro", ascending=False).head(7)
+                fig = px.pie(top_doc_pie, names="doktor_clean", values="ciro", title="Doktor Ciro Payı - İlk 7")
+                st.plotly_chart(apply_plot_theme(fig, height=390), use_container_width=True)
+            st.dataframe(doctor_kpi_view, use_container_width=True, hide_index=True)
         else:
             st.info("Doktor analizi için satış hareketlerinde doktor alanı gerekir.")
     with hr_tabs[1]:
+        if not patient_segment_visual_df.empty:
+            pseg_left, pseg_right = st.columns([0.9, 1.1])
+            with pseg_left:
+                fig = px.pie(patient_segment_visual_df, names="segment", values="hasta_sayisi", title="Hasta Segment Dağılımı")
+                st.plotly_chart(apply_plot_theme(fig, height=350), use_container_width=True)
+            with pseg_right:
+                st.markdown("<div class='ai-card'><div class='ai-title'>Hasta Segment Yorumu</div><div class='ai-text'>VIP ve kayıp riskli hasta sayıları artık sadece kart olarak değil, görsel dağılım olarak da izlenir. Detay listeler aşağıdaki tablolarda açılır.</div></div>", unsafe_allow_html=True)
         render_patient_loyalty_section(patient_loyalty, mask_patient_display)
     with hr_tabs[2]:
         st.dataframe(kurum_df, use_container_width=True, hide_index=True)
@@ -2852,6 +2940,20 @@ elif page == "🚨 Risk Merkezi":
     with a2: make_mini_card("🟢 Yeşil Reçete", str(len(green_rx_df)), f"Son dönem satış: {money_fmt(green_rx_df['satis_tutari'].sum())}", "alert-green" if len(green_rx_df) else "")
     with a3: make_mini_card("🟣 Ek İzlem", str(len(ek_izlem_df)), f"Stok: {money_fmt(ek_izlem_df['stok_degeri'].sum())}", "alert-purple" if len(ek_izlem_df) else "")
     with a4: make_mini_card("💰 KKİ Risk", str(len(kki_df)), f"Tahmini fark: {money_fmt(kki_df.get('kki_tahmini_fark_tl', pd.Series(dtype=float)).sum())}", "alert-orange" if len(kki_df) else "")
+
+    rleft, rright = st.columns(2)
+    with rleft:
+        if not risk_summary_df.empty and "Ürün Sayısı" in risk_summary_df.columns:
+            fig = px.pie(risk_summary_df, names="Risk Grubu", values="Ürün Sayısı", title="Risk Grubu Dağılımı")
+            st.plotly_chart(apply_plot_theme(fig, height=390), use_container_width=True)
+        else:
+            st.info("Risk dağılımı grafiği için eşleşen ürün bulunamadı.")
+    with rright:
+        if not risk_summary_df.empty and "Stok Değeri" in risk_summary_df.columns:
+            fig = px.bar(risk_summary_df.sort_values("Stok Değeri", ascending=False), x="Stok Değeri", y="Risk Grubu", orientation="h", title="Risk Gruplarındaki Stok Değeri")
+            st.plotly_chart(apply_plot_theme(fig, height=390), use_container_width=True)
+        else:
+            st.info("Risk stok değeri grafiği için veri bulunamadı.")
 
     if risk_summary_df.empty:
         st.info("Yüklenen eczane verisinde risk listeleriyle eşleşen ürün bulunamadı. Barkodlu risk master yüklersen eşleşme daha net olur.")
