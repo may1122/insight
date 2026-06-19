@@ -1,5 +1,5 @@
 # ============================================================
-# AYÇA Insight V10.6 Copilot Health Analysis - Kontrol Merkezi + Asistan + Ürün Fırsatları
+# AYÇA Insight V10.7 Copilot Slim Health Analysis - Kontrol Merkezi + Asistan + Ürün Fırsatları
 # ------------------------------------------------------------
 # Zorunlu / Önerilen dosyalar:
 # 1) Envanter Exceli
@@ -28,6 +28,7 @@
 from __future__ import annotations
 
 import re
+import html
 from datetime import datetime
 from io import BytesIO
 from typing import Optional
@@ -43,7 +44,7 @@ import streamlit as st
 # STREAMLIT AYARI
 # ============================================================
 st.set_page_config(
-    page_title="AYÇA Insight V10.6 Copilot Health Analysis",
+    page_title="AYÇA Insight V10.7 Copilot Slim Health Analysis",
     page_icon="💊",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -1783,7 +1784,7 @@ if st.sidebar.button("Çıkış Yap", use_container_width=True):
     safe_rerun()
 
 st.sidebar.title("💊 AYÇA Insight")
-st.sidebar.caption("V10.6 Copilot · Sağlık Analizi + Bana Sor")
+st.sidebar.caption("V10.7 Copilot Slim · Sağlık Analizi + Bana Sor")
 eczane_adi = st.sidebar.text_input("Eczane Adı", value="İdil Eczanesi")
 kullanici_adi = st.sidebar.text_input("Kullanıcı", value="Abdullah Bey")
 
@@ -1827,7 +1828,7 @@ if inventory_file is None or product_file is None or sales_file is None:
         f"""
         <div class="ayca-header">
             <div class="ayca-title">
-                <h1>AYÇA Insight V10.6 Copilot Health Analysis</h1>
+                <h1>AYÇA Insight V10.7 Copilot Slim Health Analysis</h1>
                 <p>{eczane_adi} · Üç Excel dosyasını yükle: envanter, ürün bazında toplamlar, satış hareketleri.</p>
             </div>
             <div class="header-pill">Dosya bekleniyor</div>
@@ -2152,14 +2153,14 @@ def build_health_analysis_sections(score: int, score_items: dict, current_stats:
 
 def build_health_analysis_html(sections: dict) -> str:
     def items_html(items):
-        return "".join([f"<div class='brief-health-item'>• {x}</div>" for x in items])
+        return "".join([f"<div class='brief-health-item'>• {html.escape(str(x))}</div>" for x in items])
     return f"""
         <div class="brief-health-box">
             <div class="brief-health-col"><div class="brief-health-title">🟢 Güçlü Yönler</div>{items_html(sections.get('strong', []))}</div>
             <div class="brief-health-col"><div class="brief-health-title">🟡 Dikkat</div>{items_html(sections.get('watch', []))}</div>
             <div class="brief-health-col"><div class="brief-health-title">🔴 Acil Aksiyon</div>{items_html(sections.get('urgent', []))}</div>
         </div>
-        <div class="brief-health-result">📌 {sections.get('result', '')}</div>
+        <div class="brief-health-result">📌 {html.escape(str(sections.get('result', '')))}</div>
     """
 
 
@@ -2224,29 +2225,27 @@ if page == "🏠 Sabah Brifingi":
     st.caption("Ana ekran sadeleştirildi: ekonomik sağlık, envanter sağlığı, risk özeti ve yapılacaklar.")
 
     top_actions = actions[:5] if actions else ["Kritik aksiyon görünmüyor. Bugün genel takip yeterli."]
-    task_html = "".join([f"<div class='task-item'><span>☑</span><span>{item}</span></div>" for item in top_actions])
+    task_html = "".join([f"<div class='task-item'><span>☑</span><span>{html.escape(str(item))}</span></div>" for item in top_actions])
     risk_total = len(red_rx_df) + len(green_rx_df) + len(ek_izlem_df) + len(kki_df)
     health_sections = build_health_analysis_sections(score, score_items, current_stats, product_master, dead_df, slow_df, urgent_df, reorder_df, patient_loyalty, business_insights, kki_df)
     health_html = build_health_analysis_html(health_sections)
 
-    st.markdown(
-        f"""
-        <div class="brief-grid">
-            <div class="brief-hero">
-                <div class="brief-title">Günaydın {kullanici_adi} 👋</div>
-                <div class="brief-sub">AYÇA bugün eczanenizin ekonomik, envanter, hasta sadakati ve risk durumunu sağlık analizine dönüştürdü.</div>
-                <div class="brief-score">{score}</div>
-                <div class="brief-score-label">Eczane Sağlık Skoru · {score_status(score)}</div>
-                {health_html}
-            </div>
-            <div class="brief-panel">
-                <div class="group-title" style="margin-top:0;">🤖 AYÇA Bugün Ne Diyor?</div>
-                <div class="task-list">{task_html}</div>
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
+    brief_html = (
+        f'<div class="brief-grid">'
+        f'<div class="brief-hero">'
+        f'<div class="brief-title">Günaydın {html.escape(str(kullanici_adi))} 👋</div>'
+        f'<div class="brief-sub">AYÇA bugün eczanenizin ekonomik, envanter, hasta sadakati ve risk durumunu sağlık analizine dönüştürdü.</div>'
+        f'<div class="brief-score">{score}</div>'
+        f'<div class="brief-score-label">Eczane Sağlık Skoru · {html.escape(str(score_status(score)))}</div>'
+        f'{health_html}'
+        f'</div>'
+        f'<div class="brief-panel">'
+        f'<div class="group-title" style="margin-top:0;">🤖 AYÇA Bugün Ne Diyor?</div>'
+        f'<div class="task-list">{task_html}</div>'
+        f'</div>'
+        f'</div>'
     )
+    st.markdown(brief_html, unsafe_allow_html=True)
 
     st.markdown('<div class="group-title">💰 Ekonomik Sağlık</div>', unsafe_allow_html=True)
     e1, e2, e3, e4 = st.columns(4)
@@ -2396,10 +2395,10 @@ elif page == "👥 Hasta & Reçete Merkezi":
 
 elif page == "🤖 AYÇA Copilot":
     st.markdown('<div class="section-title">🤖 AYÇA Copilot</div>', unsafe_allow_html=True)
-    st.caption("Copilot artık özet ekran değil; eczacıya ne yapacağını söyleyen yönetim danışmanı olarak çalışır.")
+    st.caption("Copilot, özet ekran değil; eczacıya ne yapacağını söyleyen yönetim danışmanı olarak çalışır.")
 
     health_sections = build_health_analysis_sections(score, score_items, current_stats, product_master, dead_df, slow_df, urgent_df, reorder_df, patient_loyalty, business_insights, kki_df)
-    copilot_tabs = st.tabs(["📋 Genel Durum", "📦 Stok Danışmanı", "💰 Finans Danışmanı", "👨‍⚕️ Doktor Danışmanı", "👥 Hasta Danışmanı", "🧠 Bana Sor"])
+    copilot_tabs = st.tabs(["📋 Genel Durum", "🧠 Bana Sor"])
 
     with copilot_tabs[0]:
         st.markdown(
@@ -2408,15 +2407,15 @@ elif page == "🤖 AYÇA Copilot":
                 <div class="exec-card">
                     <div class="exec-title">Eczane CEO Özeti</div>
                     <div class="exec-sub">AYÇA, sağlık skorunu yalnızca puan olarak değil; güçlü yön, dikkat alanı ve aksiyon planı olarak yorumlar.</div>
-                    {''.join([f'<div class="exec-list-item">🟢 {x}</div>' for x in health_sections.get('strong', [])])}
-                    {''.join([f'<div class="exec-list-item">🟡 {x}</div>' for x in health_sections.get('watch', [])])}
-                    {''.join([f'<div class="exec-list-item">🔴 {x}</div>' for x in health_sections.get('urgent', [])])}
+                    {''.join([f'<div class="exec-list-item">🟢 {html.escape(str(x))}</div>' for x in health_sections.get('strong', [])])}
+                    {''.join([f'<div class="exec-list-item">🟡 {html.escape(str(x))}</div>' for x in health_sections.get('watch', [])])}
+                    {''.join([f'<div class="exec-list-item">🔴 {html.escape(str(x))}</div>' for x in health_sections.get('urgent', [])])}
                 </div>
                 <div class="exec-card">
                     <div class="exec-sub">Genel Sağlık Skoru</div>
                     <div class="score-big">{score}</div>
-                    <div class="exec-sub">{score_status(score)}</div>
-                    <div class="exec-list-item">📌 {health_sections.get('result','')}</div>
+                    <div class="exec-sub">{html.escape(str(score_status(score)))}</div>
+                    <div class="exec-list-item">📌 {html.escape(str(health_sections.get('result','')))}</div>
                 </div>
             </div>
             """,
@@ -2425,92 +2424,16 @@ elif page == "🤖 AYÇA Copilot":
         for name, val in score_items.items():
             st.markdown(
                 f"""
-                <div class="health-row"><div class="health-head"><span>{name}</span><span>{val}/100</span></div>
+                <div class="health-row"><div class="health-head"><span>{html.escape(str(name))}</span><span>{val}/100</span></div>
                 <div class="health-bar-bg"><div class="health-bar-fill" style="width:{val}%;"></div></div></div>
                 """,
                 unsafe_allow_html=True,
             )
         st.markdown('<div class="section-title">Bu Hafta Yapılacaklar</div>', unsafe_allow_html=True)
         for item in actions[:7]:
-            st.markdown(f"<div class='exec-list-item'>☑ {item}</div>", unsafe_allow_html=True)
+            st.markdown(f"<div class='exec-list-item'>☑ {html.escape(str(item))}</div>", unsafe_allow_html=True)
 
     with copilot_tabs[1]:
-        s1, s2, s3, s4 = st.columns(4)
-        with s1: make_mini_card("Önerilen Sipariş", money_fmt(order_budget_info["final_total"]), f"Bütçe {money_fmt(order_budget_info['budget_limit'])}", "alert-green")
-        with s2: make_mini_card("Acil Sipariş", str(len(urgent_df)), "Satış kaçırma riski", "alert-red" if len(urgent_df) else "alert-green")
-        with s3: make_mini_card("Ölü Stok", str(len(dead_df)), money_fmt(dead_df["stok_degeri"].sum()), "alert-orange" if len(dead_df) else "alert-green")
-        with s4: make_mini_card("Yavaş Stok", str(len(slow_df)), money_fmt(slow_df["stok_degeri"].sum()), "alert-purple" if len(slow_df) else "alert-green")
-        c1, c2 = st.columns(2)
-        with c1:
-            st.markdown('<div class="section-title">İlk Öncelikli Siparişler</div>', unsafe_allow_html=True)
-            st.dataframe(reorder_df[product_cols].head(20), use_container_width=True, hide_index=True)
-        with c2:
-            st.markdown('<div class="section-title">Sermaye Bağlayan Stoklar</div>', unsafe_allow_html=True)
-            capital_view = pd.concat([dead_df, slow_df], ignore_index=True).drop_duplicates("barkod") if not dead_df.empty or not slow_df.empty else pd.DataFrame()
-            if capital_view.empty:
-                st.success("Belirgin sermaye bağlayan ölü/yavaş stok görünmüyor.")
-            else:
-                st.dataframe(capital_view[[c for c in product_cols if c in capital_view.columns]].sort_values("stok_degeri", ascending=False).head(20), use_container_width=True, hide_index=True)
-
-    with copilot_tabs[2]:
-        f1, f2, f3, f4 = st.columns(4)
-        with f1: make_metric_card("Ciro", money_fmt(current_stats.get("ciro", 0)), period_label, ciro_trend, ciro_class)
-        with f2: make_metric_card("Brüt Kâr", money_fmt(current_stats.get("kar", 0)), "Satış hareketleri", profit_trend, profit_class)
-        with f3: make_metric_card("Marj", pct_fmt(current_stats.get("marj", 0)), "Brüt kâr / ciro", margin_trend, margin_class)
-        with f4: make_metric_card("Tahsilat Açığı", money_fmt(current_stats.get("tahsilat_acigi", 0)), "Kapanmayan fark")
-        c1, c2 = st.columns(2)
-        with c1:
-            silent = business_insights.get("silent_loss", pd.DataFrame())
-            st.markdown('<div class="section-title">Sessiz Kâr Kaybı Adayları</div>', unsafe_allow_html=True)
-            if silent is not None and not silent.empty:
-                silent_cols = [c for c in product_cols + ["tahmini_sessiz_kayip"] if c in silent.columns]
-                st.dataframe(silent[silent_cols].head(20), use_container_width=True, hide_index=True)
-            else:
-                st.success("Belirgin sessiz kâr kaybı adayı görünmüyor.")
-        with c2:
-            st.markdown('<div class="section-title">Tahsilat Kanalları</div>', unsafe_allow_html=True)
-            if payment_df is not None and not payment_df.empty:
-                st.dataframe(payment_df, use_container_width=True, hide_index=True)
-            else:
-                st.info("Tahsilat kırılımı için yeterli veri bulunamadı.")
-
-    with copilot_tabs[3]:
-        doctor_kpi = doctor_intel.get("doctor_kpi", pd.DataFrame()) if doctor_intel else pd.DataFrame()
-        if doctor_kpi.empty:
-            st.info("Doktor danışmanı için satış hareketlerinde doktor alanı gerekir.")
-        else:
-            d1, d2, d3 = st.columns(3)
-            top_doc = doctor_kpi.sort_values("ciro", ascending=False).iloc[0]
-            top_profit_doc = doctor_kpi.sort_values("kar", ascending=False).iloc[0]
-            with d1: make_mini_card("Doktor Sayısı", str(doctor_kpi["doktor_clean"].nunique()), "Seçili dönem", "alert-blue")
-            with d2: make_mini_card("Ciro Lideri", str(top_doc["doktor_clean"]), money_fmt(top_doc["ciro"]), "alert-green")
-            with d3: make_mini_card("Kâr Lideri", str(top_profit_doc["doktor_clean"]), money_fmt(top_profit_doc["kar"]), "alert-purple")
-            c1, c2 = st.columns(2)
-            with c1:
-                fig = px.bar(doctor_kpi.head(15), x="ciro", y="doktor_clean", orientation="h", title="Ciroya Göre Doktorlar")
-                st.plotly_chart(apply_plot_theme(fig, height=480), use_container_width=True)
-            with c2:
-                st.dataframe(doctor_kpi.head(30), use_container_width=True, hide_index=True)
-
-    with copilot_tabs[4]:
-        summary = patient_loyalty.get("summary", {}) if patient_loyalty else {}
-        if not summary:
-            st.info("Hasta danışmanı için satış dosyasında hasta adı bilgisi gerekir.")
-        else:
-            h1, h2, h3 = st.columns(3)
-            with h1: make_mini_card("Aktif Hasta", str(summary.get("aktif_hasta", 0)), "Son 12 ay", "alert-blue")
-            with h2: make_mini_card("VIP Hasta", str(summary.get("vip_hasta", 0)), "Korunacak segment", "alert-green")
-            with h3: make_mini_card("Kayıp Riski", str(summary.get("kayip_riski", 0)), "Son 90 gün", "alert-red" if summary.get("kayip_riski", 0) else "alert-green")
-            vip_view = patient_loyalty.get("vip", pd.DataFrame()).copy()
-            lost_view = patient_loyalty.get("lost", pd.DataFrame()).copy()
-            if mask_patient_display:
-                vip_view = mask_patient_names(vip_view)
-                lost_view = mask_patient_names(lost_view)
-            t1, t2 = st.tabs(["VIP Koruma Listesi", "Geri Kazanım Listesi"])
-            with t1: st.dataframe(vip_view.head(50), use_container_width=True, hide_index=True)
-            with t2: st.dataframe(lost_view.head(50), use_container_width=True, hide_index=True)
-
-    with copilot_tabs[5]:
         st.markdown('<div class="section-title">Hazır Sorular</div>', unsafe_allow_html=True)
         ready_questions = [
             "Bu ay neden kâr düştü?",
@@ -2532,14 +2455,14 @@ elif page == "🤖 AYÇA Copilot":
         st.markdown(
             f"""
             <div class="ai-card">
-                <div class="ai-title">Soru: {selected_q}</div>
+                <div class="ai-title">Soru: {html.escape(str(selected_q))}</div>
                 <div class="ai-text">AYÇA'nın veri bazlı yanıtı aşağıdadır.</div>
             </div>
             """,
             unsafe_allow_html=True,
         )
         for ans in copilot_answer(selected_q, product_master, current_stats, reorder_df, dead_df, slow_df, business_insights, patient_loyalty, doctor_intel, payment_df):
-            st.markdown(f"<div class='exec-list-item'>💡 {ans}</div>", unsafe_allow_html=True)
+            st.markdown(f"<div class='exec-list-item'>💡 {html.escape(str(ans))}</div>", unsafe_allow_html=True)
         st.caption("Bu bölüm şu an kural tabanlı çalışır. İleride gerçek LLM/API bağlantısı ile serbest soru-cevap motoruna dönüşebilir.")
 
 elif page == "🩺 Sağlık Karnesi":
@@ -3030,7 +2953,7 @@ elif page == "📊 Raporlar":
         patient_loyalty.get("frequency"), patient_loyalty.get("lost"), business_insights
     )
     st.download_button(
-        "📥 AYÇA Insight V10.6 Copilot Health Analysis Raporunu İndir",
+        "📥 AYÇA Insight V10.7 Copilot Slim Health Analysis Raporunu İndir",
         data=report,
         file_name=f"ayca_insight_v9_2_kki_risk_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
