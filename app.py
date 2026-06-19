@@ -137,6 +137,11 @@ st.markdown(
     .brief-sub {color:#DBEAFE; font-size:14px; line-height:1.55; position:relative; z-index:2; max-width:760px;}
     .brief-score {font-size:64px; font-weight:950; letter-spacing:-2px; color:white; line-height:1; margin-top:18px; position:relative; z-index:2;}
     .brief-score-label {font-size:13px; font-weight:900; color:#BFDBFE; position:relative; z-index:2;}
+    .brief-score-bars {position:relative; z-index:2; margin-top:18px; background:rgba(255,255,255,.10); border:1px solid rgba(255,255,255,.16); border-radius:18px; padding:14px 16px;}
+    .brief-score-row {margin:12px 0;}
+    .brief-score-head {display:flex; justify-content:space-between; color:#FFFFFF; font-weight:950; font-size:13px; margin-bottom:7px;}
+    .brief-score-bg {width:100%; height:11px; background:rgba(255,255,255,.18); border-radius:999px; overflow:hidden;}
+    .brief-score-fill {height:11px; border-radius:999px; background:linear-gradient(90deg,#60A5FA,#34D399);}
     .brief-health-box {position:relative; z-index:2; margin-top:18px; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px;}
     .brief-health-col {background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.18); border-radius:16px; padding:12px; backdrop-filter:blur(8px);}
     .brief-health-title {font-size:13px; font-weight:950; color:#FFFFFF; margin-bottom:8px;}
@@ -1784,7 +1789,7 @@ if st.sidebar.button("Çıkış Yap", use_container_width=True):
     safe_rerun()
 
 st.sidebar.title("💊 AYÇA Insight")
-st.sidebar.caption("V10.7 Copilot Slim · Sağlık Analizi + Bana Sor")
+st.sidebar.caption("V10.7.1 Copilot Slim · Sağlık Barları + Hazır Sorular")
 eczane_adi = st.sidebar.text_input("Eczane Adı", value="İdil Eczanesi")
 kullanici_adi = st.sidebar.text_input("Kullanıcı", value="Abdullah Bey")
 
@@ -2228,6 +2233,11 @@ if page == "🏠 Sabah Brifingi":
     task_html = "".join([f"<div class='task-item'><span>☑</span><span>{html.escape(str(item))}</span></div>" for item in top_actions])
     risk_total = len(red_rx_df) + len(green_rx_df) + len(ek_izlem_df) + len(kki_df)
     health_sections = build_health_analysis_sections(score, score_items, current_stats, product_master, dead_df, slow_df, urgent_df, reorder_df, patient_loyalty, business_insights, kki_df)
+    health_bars_html = "<div class='brief-score-bars'>" + "".join([
+        f"<div class='brief-score-row'><div class='brief-score-head'><span>{html.escape(str(name))}</span><span>{int(max(0, min(100, val)))}/100</span></div>"
+        f"<div class='brief-score-bg'><div class='brief-score-fill' style='width:{int(max(0, min(100, val)))}%;'></div></div></div>"
+        for name, val in score_items.items()
+    ]) + "</div>"
     health_html = build_health_analysis_html(health_sections)
 
     brief_html = (
@@ -2237,6 +2247,7 @@ if page == "🏠 Sabah Brifingi":
         f'<div class="brief-sub">AYÇA bugün eczanenizin ekonomik, envanter, hasta sadakati ve risk durumunu sağlık analizine dönüştürdü.</div>'
         f'<div class="brief-score">{score}</div>'
         f'<div class="brief-score-label">Eczane Sağlık Skoru · {html.escape(str(score_status(score)))}</div>'
+        f'{health_bars_html}'
         f'{health_html}'
         f'</div>'
         f'<div class="brief-panel">'
@@ -2403,59 +2414,57 @@ elif page == "🤖 AYÇA Copilot":
     with copilot_tabs[0]:
         st.markdown(
             f"""
-            <div class="exec-grid">
-                <div class="exec-card">
-                    <div class="exec-title">Eczane CEO Özeti</div>
-                    <div class="exec-sub">AYÇA, sağlık skorunu yalnızca puan olarak değil; güçlü yön, dikkat alanı ve aksiyon planı olarak yorumlar.</div>
-                    {''.join([f'<div class="exec-list-item">🟢 {html.escape(str(x))}</div>' for x in health_sections.get('strong', [])])}
-                    {''.join([f'<div class="exec-list-item">🟡 {html.escape(str(x))}</div>' for x in health_sections.get('watch', [])])}
-                    {''.join([f'<div class="exec-list-item">🔴 {html.escape(str(x))}</div>' for x in health_sections.get('urgent', [])])}
-                </div>
-                <div class="exec-card">
-                    <div class="exec-sub">Genel Sağlık Skoru</div>
-                    <div class="score-big">{score}</div>
-                    <div class="exec-sub">{html.escape(str(score_status(score)))}</div>
-                    <div class="exec-list-item">📌 {html.escape(str(health_sections.get('result','')))}</div>
-                </div>
+            <div class="exec-card">
+                <div class="exec-title">Eczane CEO Özeti</div>
+                <div class="exec-sub">Bu alan sağlık skoru tekrarına girmeden, bugün yapılması gereken yönetim aksiyonlarını özetler.</div>
+                {''.join([f'<div class="exec-list-item">🟢 {html.escape(str(x))}</div>' for x in health_sections.get('strong', [])])}
+                {''.join([f'<div class="exec-list-item">🟡 {html.escape(str(x))}</div>' for x in health_sections.get('watch', [])])}
+                {''.join([f'<div class="exec-list-item">🔴 {html.escape(str(x))}</div>' for x in health_sections.get('urgent', [])])}
+                <div class="exec-list-item">📌 {html.escape(str(health_sections.get('result','')))}</div>
             </div>
             """,
             unsafe_allow_html=True,
         )
-        for name, val in score_items.items():
-            st.markdown(
-                f"""
-                <div class="health-row"><div class="health-head"><span>{html.escape(str(name))}</span><span>{val}/100</span></div>
-                <div class="health-bar-bg"><div class="health-bar-fill" style="width:{val}%;"></div></div></div>
-                """,
-                unsafe_allow_html=True,
-            )
         st.markdown('<div class="section-title">Bu Hafta Yapılacaklar</div>', unsafe_allow_html=True)
-        for item in actions[:7]:
+        for item in actions[:8]:
             st.markdown(f"<div class='exec-list-item'>☑ {html.escape(str(item))}</div>", unsafe_allow_html=True)
 
     with copilot_tabs[1]:
         st.markdown('<div class="section-title">Hazır Sorular</div>', unsafe_allow_html=True)
+        st.caption("Bu bölüm serbest soru alanı değildir. Sistem sadece aşağıdaki hazır analiz kartlarına veri bazlı yanıt verir.")
         ready_questions = [
             "Bu ay neden kâr düştü?",
+            "En çok kâr getiren ürün hangisi?",
+            "Sessiz kâr kaybı nerede?",
             "Hangi ürünler sermaye bağlıyor?",
+            "Ölü stokta ilk neye bakmalıyım?",
+            "Yavaş stokta hangi ürünler var?",
             "Bu hafta ne sipariş etmeliyim?",
+            "Acil sipariş listesinde ne var?",
+            "Sipariş bütçem ne kadar kullanılıyor?",
             "Kaybettiğim hastalar kimler?",
+            "VIP hastalarım korunuyor mu?",
+            "Hasta sadakatinde risk var mı?",
             "En çok ciro getiren doktorlar kimler?",
+            "Doktor tarafında neyi kontrol etmeliyim?",
+            "Kurum reçetelerinde durum nasıl?",
             "Tahsilat yapım sağlıklı mı?",
+            "Tahsilat açığı var mı?",
+            "Finansal olarak ilk aksiyon ne?",
+            "KKİ riskim var mı?",
+            "Kırmızı yeşil reçete riskim nedir?",
+            "Bugün ilk 5 aksiyonum ne?",
         ]
         q_cols = st.columns(3)
         for i, q in enumerate(ready_questions):
             with q_cols[i % 3]:
                 if st.button(q, use_container_width=True, key=f"copilot_q_{i}"):
                     st.session_state["copilot_question"] = q
-        custom_q = st.text_input("AYÇA'ya sor", value=st.session_state.get("copilot_question", "Hangi ürünler paramı bağlıyor?"))
-        if st.button("Yanıtla", type="primary", use_container_width=True):
-            st.session_state["copilot_question"] = custom_q
-        selected_q = st.session_state.get("copilot_question", custom_q)
+        selected_q = st.session_state.get("copilot_question", ready_questions[0])
         st.markdown(
             f"""
             <div class="ai-card">
-                <div class="ai-title">Soru: {html.escape(str(selected_q))}</div>
+                <div class="ai-title">Seçilen analiz: {html.escape(str(selected_q))}</div>
                 <div class="ai-text">AYÇA'nın veri bazlı yanıtı aşağıdadır.</div>
             </div>
             """,
@@ -2463,7 +2472,8 @@ elif page == "🤖 AYÇA Copilot":
         )
         for ans in copilot_answer(selected_q, product_master, current_stats, reorder_df, dead_df, slow_df, business_insights, patient_loyalty, doctor_intel, payment_df):
             st.markdown(f"<div class='exec-list-item'>💡 {html.escape(str(ans))}</div>", unsafe_allow_html=True)
-        st.caption("Bu bölüm şu an kural tabanlı çalışır. İleride gerçek LLM/API bağlantısı ile serbest soru-cevap motoruna dönüşebilir.")
+        st.caption("Serbest soru alanı şimdilik kapalıdır. Gerçek LLM/API bağlantısı eklendiğinde tekrar açılabilir.")
+
 
 elif page == "🩺 Sağlık Karnesi":
     st.markdown('<div class="section-title">🩺 Eczane Sağlık Karnesi</div>', unsafe_allow_html=True)
