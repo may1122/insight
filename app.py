@@ -608,7 +608,6 @@ def show_ayca_sidebar_brand():
             {render_ayca_logo_html(145)}
             <div class="ayca-sidebar-title">AYÇA Insight</div>
             <div class="ayca-sidebar-sub">Eczane Yönetim Zekâsı</div>
-            <div class="ayca-sidebar-url">{AYCA_WEBSITE_TEXT}</div>
         </div>
         """,
         unsafe_allow_html=True,
@@ -812,7 +811,7 @@ def show_demo_auth_screen():
                     <div class="login-clean-feature">✓ Stok ve sermaye kontrolü</div>
                     <div class="login-clean-feature">✓ Yapay zekâ destekli içgörüler</div>
                 </div>
-                <div class="login-clean-version">AYÇA Insight V10.6 · Copilot Health Analysis</div>
+                <div class="login-clean-version">AYÇA Insight V10.7.4 · Premium Health SaaS</div>
             </div>
             """,
             unsafe_allow_html=True,
@@ -2364,21 +2363,51 @@ match_ratio = safe_div(matched_count, len(product_barcodes))
 
 
 # ============================================================
-# HEADER - SADE SAAS ÜST ALAN
+# HEADER - LOGOLU PREMIUM ÜST ALAN
 # ============================================================
 today_str = datetime.now().strftime("%d.%m.%Y")
-st.markdown(
-    f"""
-    <div class="ayca-header">
-        <div class="ayca-title">
-            <h1>AYÇA Insight V10.6</h1>
-            <p>{eczane_adi} · {period_label} · Gün hesabı: {analysis_days} gün · {today_str}</p>
+
+h_left, h_right = st.columns([4, 1])
+
+with h_left:
+    st.markdown(
+        f"""
+        <div style="display:flex;align-items:center;gap:14px;margin:4px 0 14px 0;">
+            {render_ayca_logo_html(220)}
+            <div>
+                <div style="
+                    font-size:30px;
+                    font-weight:950;
+                    color:#0F172A;
+                    letter-spacing:-.7px;
+                    line-height:1.05;
+                ">
+                    AYÇA Insight
+                </div>
+                <div style="
+                    color:#64748B;
+                    font-size:14px;
+                    margin-top:5px;
+                    font-weight:750;
+                ">
+                    {eczane_adi} · {period_label} · Gün hesabı: {analysis_days} gün · {today_str}
+                </div>
+            </div>
         </div>
-        <div class="header-pill">{get_membership()} Plan · Sağlık Skoru {score}/100</div>
-    </div>
-    """,
-    unsafe_allow_html=True,
-)
+        """,
+        unsafe_allow_html=True,
+    )
+
+with h_right:
+    st.markdown(
+        f"""
+        <div class="header-pill" style="text-align:right;line-height:1.45;">
+            {get_membership()} Plan · Sağlık Skoru {score}/100<br>
+            <span style="font-size:12px;color:#64748B;font-weight:850;">{AYCA_APP_VERSION}</span>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
 
 
@@ -2482,7 +2511,7 @@ skin_map = {
 }
 apply_section_skin(skin_map.get(page, "brief"))
 
-show_ayca_brand_strip()
+# Üstteki büyük marka kartı kaldırıldı; logo artık ana header alanında gösteriliyor.
 
 product_cols = [
     "barkod", "urun", "urun_grubu", "raf", "stok", "kritik_stok", "psf_final", "stok_degeri",
