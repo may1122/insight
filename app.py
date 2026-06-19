@@ -1912,6 +1912,21 @@ hourly_df = period_df.groupby("saat", as_index=False).agg(ciro=("ciro", "sum"), 
 daily_df = period_df.groupby("gun", as_index=False).agg(ciro=("ciro", "sum"), kar=("brut_kar", "sum"), islem=("satis_no", "nunique"), tahsilat_acigi=("tahsilat_acigi", "sum"))
 daily_df["marj"] = np.where(daily_df["ciro"] > 0, daily_df["kar"] / daily_df["ciro"], 0)
 
+# Finans Merkezi / Ciro & Tahsilat için güvenli ödeme özeti.
+# Eski sürümde payment_df bazı koşullarda hiç oluşmadığı için ekran kırılıyordu.
+payment_df = pd.DataFrame()
+if period_df is not None and not period_df.empty and {"tahsilat", "ciro"}.issubset(period_df.columns):
+    payment_df = period_df.copy()
+    payment_df["tahsilat"] = payment_df["tahsilat"].astype(str).replace({"nan": "Bilinmiyor", "None": "Bilinmiyor"}).fillna("Bilinmiyor")
+    payment_df = payment_df.groupby("tahsilat", as_index=False).agg(
+        ciro=("ciro", "sum"),
+        kar=("brut_kar", "sum"),
+        islem=("satis_no", "nunique"),
+        tahsilat_acigi=("tahsilat_acigi", "sum"),
+    )
+    payment_df["marj"] = np.where(payment_df["ciro"] > 0, payment_df["kar"] / payment_df["ciro"], 0)
+    payment_df = payment_df.sort_values("ciro", ascending=False)
+
 actions = create_action_items(product_master, current_stats, previous_stats, daily_df)
 patient_loyalty = build_patient_loyalty(period_df, sales_df)
 doctor_intel = build_doctor_intelligence(period_df, sales_df, product_master)
@@ -1961,6 +1976,78 @@ st.markdown(
     """,
     unsafe_allow_html=True,
 )
+
+
+
+def render_patient_loyalty_section(patient_loyalty: dict, mask_patient_display: bool = True):
+    """Hasta sadakati ekranı: kart + ölçülü grafik + aksiyon tablosu."""
+    summary = patient_loyalty.get("summary", {}) if patient_loyalty else {}
+    if not summary:
+        st.info("Hasta sadakat analizi için satış dosyasında hasta adı bilgisi bulunamadı.")
+        return
+
+    h1, h2, h3, h4 = st.columns(4)
+    with h1: make_mini_card("Aktif Hasta", str(summary.get("aktif_hasta", 0)), "Son 12 ay verisi", "alert-blue")
+    with h2: make_mini_card("VIP Segment", str(summary.get("vip_hasta", 0)), "Sık gelen / yüksek ciro", "alert-green")
+    with h3: make_mini_card("Kayıp Riski", str(summary.get("kayip_riski", 0)), "Son 90 gündür gelmeyen", "alert-red" if summary.get("kayip_riski", 0) else "alert-green")
+    with h4: make_mini_card("Hasta Kaynaklı Ciro", money_fmt(summary.get("toplam_hasta_ciro", 0)), "Eşleşen hasta kayıtları", "alert-purple")
+
+    freq_df = patient_loyalty.get("frequency", pd.DataFrame()).copy()
+    basket_df = patient_loyalty.get("basket", pd.DataFrame()).copy()
+    lost_df = patient_loyalty.get("lost", pd.DataFrame()).copy()
+    vip_df = patient_loyalty.get("vip", pd.DataFrame()).copy()
+
+    # Görsel yoğunluk: üstte 2 grafik yeterli, detaylar tablolarda.
+    g1, g2 = st.columns(2)
+    with g1:
+        if not vip_df.empty and {"hasta_clean", "ciro"}.issubset(vip_df.columns):
+            vip_chart = vip_df.sort_values("ciro", ascending=False).head(15)
+            fig = px.bar(vip_chart, x="ciro", y="hasta_clean", orientation="h", title="VIP Hastalar - Ciro Katkısı")
+            st.plotly_chart(apply_plot_theme(fig, height=390), use_container_width=True)
+        else:
+            st.info("VIP hasta grafiği için yeterli veri bulunamadı.")
+    with g2:
+        if not lost_df.empty and {"hasta_clean", "onceki_ciro"}.issubset(lost_df.columns):
+            lost_chart = lost_df.sort_values("onceki_ciro", ascending=False).head(15)
+            fig = px.bar(lost_chart, x="onceki_ciro", y="hasta_clean", orientation="h", title="Kayıp Riski - Önceki Ciro")
+            st.plotly_chart(apply_plot_theme(fig, height=390), use_container_width=True)
+        elif not freq_df.empty and {"ziyaret", "ciro"}.issubset(freq_df.columns):
+            fig = px.scatter(freq_df.head(80), x="ziyaret", y="ciro", size="ortalama_sepet" if "ortalama_sepet" in freq_df.columns else None, title="Hasta Frekans / Ciro Haritası")
+            st.plotly_chart(apply_plot_theme(fig, height=390), use_container_width=True)
+        else:
+            st.info("Kayıp riski grafiği için yeterli veri bulunamadı.")
+
+    if mask_patient_display:
+        freq_df = mask_patient_names(freq_df)
+        basket_df = mask_patient_names(basket_df)
+        lost_df = mask_patient_names(lost_df)
+        vip_df = mask_patient_names(vip_df)
+
+    st.markdown('<div class="section-title">Aksiyon Listeleri</div>', unsafe_allow_html=True)
+    t1, t2, t3, t4 = st.tabs(["VIP Segment", "Kayıp Riski", "En Sık Gelen 50", "En Yüksek Sepet"])
+    with t1:
+        st.caption("Bu liste eczanenin korunması gereken değerli hasta grubunu gösterir.")
+        st.dataframe(vip_df, use_container_width=True, hide_index=True)
+    with t2:
+        st.caption("Bu liste geçmişte düzenli gelmiş ancak son 90 gündür görünmeyen hastaları gösterir.")
+        st.dataframe(lost_df, use_container_width=True, hide_index=True)
+    with t3:
+        st.dataframe(freq_df, use_container_width=True, hide_index=True)
+    with t4:
+        st.dataframe(basket_df, use_container_width=True, hide_index=True)
+
+    st.markdown(
+        """
+        <div class="ai-card">
+            <div class="ai-title">KVKK Notu</div>
+            <div class="ai-text">
+            Bu ekran ticari karar desteği için tasarlanmıştır. Hasta isimleri varsayılan olarak maskelenir.
+            Hasta TC, açık sağlık tanısı ve hassas sağlık verisi analiz ekranına alınmamalıdır.
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
 # ============================================================
 # SAYFALAR
@@ -2131,6 +2218,14 @@ elif page == "💰 Finans Merkezi":
                 st.info("Tahsilat tipi grafiği için yeterli veri bulunamadı.")
 
         if payment_df is not None and not payment_df.empty:
+            p1, p2, p3 = st.columns(3)
+            toplam_tahsilat_ciro = float(payment_df.get("ciro", pd.Series(dtype=float)).sum())
+            en_buyuk_tahsilat = payment_df.sort_values("ciro", ascending=False).iloc[0] if toplam_tahsilat_ciro > 0 else None
+            tahsilat_acigi_toplam = float(payment_df.get("tahsilat_acigi", pd.Series(dtype=float)).sum())
+            with p1: make_mini_card("Tahsilat Kanalı", str(len(payment_df)), "Ödeme tipi kırılımı", "alert-blue")
+            with p2: make_mini_card("En Büyük Kanal", str(en_buyuk_tahsilat["tahsilat"]) if en_buyuk_tahsilat is not None else "-", money_fmt(en_buyuk_tahsilat["ciro"]) if en_buyuk_tahsilat is not None else "₺0", "alert-green")
+            with p3: make_mini_card("Tahsilat Açığı", money_fmt(tahsilat_acigi_toplam), "Ciro - ödenen farkı", "alert-red" if tahsilat_acigi_toplam > 0 else "alert-green")
+            st.markdown('<div class="section-title">Tahsilat Aksiyon Tablosu</div>', unsafe_allow_html=True)
             st.dataframe(payment_df, use_container_width=True, hide_index=True)
         else:
             st.info("Tahsilat özeti için veri bulunamadı.")
@@ -2144,12 +2239,7 @@ elif page == "👥 Hasta & Reçete Merkezi":
         else:
             st.info("Doktor analizi için satış hareketlerinde doktor alanı gerekir.")
     with hr_tabs[1]:
-        patient_summary = patient_loyalty.get("summary", {})
-        h1, h2, h3 = st.columns(3)
-        with h1: make_mini_card("Aktif Hasta", str(patient_summary.get("aktif_hasta", 0)), "Son 12 ay", "alert-blue")
-        with h2: make_mini_card("VIP Hasta", str(patient_summary.get("vip_hasta", 0)), "Yüksek frekans / ciro", "alert-green")
-        with h3: make_mini_card("Kayıp Riski", str(patient_summary.get("kayip_riski", 0)), "Son 90 gündür gelmeyen", "alert-orange")
-        st.dataframe(patient_loyalty.get("frequency", pd.DataFrame()), use_container_width=True, hide_index=True)
+        render_patient_loyalty_section(patient_loyalty, mask_patient_display)
     with hr_tabs[2]:
         st.dataframe(kurum_df, use_container_width=True, hide_index=True)
     with hr_tabs[3]:
