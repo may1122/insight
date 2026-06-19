@@ -219,13 +219,59 @@ st.markdown(
     }
     .module-hero-kpi-label {font-size:12px; font-weight:900; color:rgba(255,255,255,.74); margin-bottom:8px;}
     .module-hero-kpi-value {font-size:22px; font-weight:950; color:#FFFFFF; letter-spacing:-.35px;}
-    .hero-blue {background:linear-gradient(135deg,#1E3A8A 0%,#2563EB 55%,#38BDF8 100%);}
-    .hero-green {background:linear-gradient(135deg,#064E3B 0%,#059669 55%,#10B981 100%);}
-    .hero-orange {background:linear-gradient(135deg,#9A3412 0%,#EA580C 55%,#F97316 100%);}
-    .hero-purple {background:linear-gradient(135deg,#4C1D95 0%,#7C3AED 55%,#A855F7 100%);}
-    .hero-navy {background:linear-gradient(135deg,#020617 0%,#0F172A 50%,#1E3A8A 100%);}
+    /* V10.7.4 - Premium Health SaaS renk dili: güçlü değil, klinik ve soft */
+    .hero-blue {background:linear-gradient(135deg,#1E40AF 0%,#2563EB 55%,#60A5FA 100%);}
+    .hero-green {background:linear-gradient(135deg,#047857 0%,#10B981 55%,#6EE7B7 100%);}
+    .hero-orange {background:linear-gradient(135deg,#FFF7ED 0%,#FFEDD5 52%,#FED7AA 100%); color:#7C2D12; box-shadow:0 22px 58px rgba(251,146,60,.16);}
+    .hero-purple {background:linear-gradient(135deg,#FAF5FF 0%,#F3E8FF 52%,#E9D5FF 100%); color:#581C87; box-shadow:0 22px 58px rgba(192,132,252,.16);}
+    .hero-navy {background:linear-gradient(135deg,#F8FAFC 0%,#EEF2FF 54%,#E0E7FF 100%); color:#1E1B4B; box-shadow:0 22px 58px rgba(129,140,248,.16);}
+    .hero-orange .module-hero-eyebrow, .hero-orange .module-hero-score-label,
+    .hero-purple .module-hero-eyebrow, .hero-purple .module-hero-score-label,
+    .hero-navy .module-hero-eyebrow, .hero-navy .module-hero-score-label {color:rgba(51,65,85,.72);}
+    .hero-orange .module-hero-title, .hero-orange .module-hero-score, .hero-orange .module-hero-kpi-value {color:#7C2D12;}
+    .hero-purple .module-hero-title, .hero-purple .module-hero-score, .hero-purple .module-hero-kpi-value {color:#581C87;}
+    .hero-navy .module-hero-title, .hero-navy .module-hero-score, .hero-navy .module-hero-kpi-value {color:#1E1B4B;}
+    .hero-orange .module-hero-desc, .hero-purple .module-hero-desc, .hero-navy .module-hero-desc {color:#475569;}
+    .hero-orange .module-hero-kpi, .hero-purple .module-hero-kpi, .hero-navy .module-hero-kpi {background:rgba(255,255,255,.68); border:1px solid rgba(255,255,255,.72);}
+    .hero-orange .module-hero-kpi-label, .hero-purple .module-hero-kpi-label, .hero-navy .module-hero-kpi-label {color:#64748B;}
 
-    /* V10.7.3 - Section Skins: merkez bazlı hafif renkli atmosfer */
+    /* V10.7.4 - Premium KPI kartları: ikon, hover ve soft sağlık SaaS hissi */
+    .metric-card, .mini-card, .compact-card, .task-list, .risk-summary-card {
+        transition:transform .22s ease, box-shadow .22s ease, border-color .22s ease;
+    }
+    .metric-card:hover, .mini-card:hover, .compact-card:hover {
+        transform:translateY(-4px);
+        box-shadow:0 22px 48px rgba(15,23,42,.10);
+        border-color:color-mix(in srgb, var(--page-accent, #2563EB) 30%, #E2E8F0);
+    }
+    .metric-card:before {
+        content:"";
+        position:absolute;
+        right:-46px;
+        top:-46px;
+        width:120px;
+        height:120px;
+        border-radius:999px;
+        background:color-mix(in srgb, var(--page-accent, #2563EB) 13%, transparent);
+    }
+    .metric-icon {
+        position:absolute;
+        right:16px;
+        top:15px;
+        width:38px;
+        height:38px;
+        border-radius:14px;
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        background:color-mix(in srgb, var(--page-accent, #2563EB) 12%, white);
+        border:1px solid color-mix(in srgb, var(--page-accent, #2563EB) 20%, #E2E8F0);
+        font-size:18px;
+        z-index:2;
+    }
+    .metric-label, .metric-value, .metric-sub {position:relative; z-index:2;}
+
+    /* V10.7.3/10.7.4 - Section Skins: merkez bazlı hafif renkli atmosfer */
     .skin-page-note {display:none;}
     .module-hero-v2 {margin-bottom:18px;}
 
@@ -805,13 +851,26 @@ def read_excel_first_sheet(uploaded_file):
 
 
 def make_metric_card(label, value, sub="", trend_text_value=None, trend_class="metric-up"):
-    trend_html = f" <span class='{trend_class}'>{trend_text_value}</span>" if trend_text_value else ""
+    """Premium KPI kartı: otomatik ikon + güvenli HTML + trend alanı."""
+    label_str = str(label or "")
+    label_l = normalize_col_name(label_str)
+    icon = "📊"
+    if any(k in label_l for k in ["ciro", "satis", "tutar"]): icon = "💰"
+    elif any(k in label_l for k in ["kar", "marj", "profit"]): icon = "📈"
+    elif any(k in label_l for k in ["stok", "urun", "siparis"]): icon = "📦"
+    elif any(k in label_l for k in ["risk", "miad", "kritik", "kki"]): icon = "⚠️"
+    elif any(k in label_l for k in ["hasta", "recete", "doktor"]): icon = "👥"
+    elif any(k in label_l for k in ["tahsilat", "nakit", "odeme"]): icon = "💳"
+    elif any(k in label_l for k in ["skor", "saglik"]): icon = "💎"
+
+    trend_html = f" <span class='{trend_class}'>{html.escape(str(trend_text_value))}</span>" if trend_text_value else ""
     st.markdown(
         f"""
         <div class="metric-card">
-            <div class="metric-label">{label}</div>
-            <div class="metric-value">{value}</div>
-            <div class="metric-sub">{sub}{trend_html}</div>
+            <div class="metric-icon">{icon}</div>
+            <div class="metric-label">{html.escape(str(label))}</div>
+            <div class="metric-value">{html.escape(str(value))}</div>
+            <div class="metric-sub">{html.escape(str(sub))}{trend_html}</div>
         </div>
         """,
         unsafe_allow_html=True,
@@ -849,16 +908,16 @@ def apply_section_skin(theme: str):
             "accent": "#10B981",
         },
         "risk": {
-            "bg": "linear-gradient(180deg,#FFF7ED 0%,#F8FAFC 48%,#FFFFFF 100%)",
-            "accent": "#F97316",
+            "bg": "linear-gradient(180deg,#FFF7ED 0%,#FFFBF7 42%,#FFFFFF 100%)",
+            "accent": "#FB923C",
         },
         "patient": {
-            "bg": "linear-gradient(180deg,#F5F3FF 0%,#F8FAFC 48%,#FFFFFF 100%)",
-            "accent": "#A855F7",
+            "bg": "linear-gradient(180deg,#FAF5FF 0%,#FBFAFF 42%,#FFFFFF 100%)",
+            "accent": "#C084FC",
         },
         "copilot": {
-            "bg": "linear-gradient(180deg,#E0E7FF 0%,#F8FAFC 48%,#FFFFFF 100%)",
-            "accent": "#1E3A8A",
+            "bg": "linear-gradient(180deg,#F8FAFC 0%,#EEF2FF 46%,#FFFFFF 100%)",
+            "accent": "#818CF8",
         },
         "report": {
             "bg": "linear-gradient(180deg,#F1F5F9 0%,#F8FAFC 48%,#FFFFFF 100%)",
