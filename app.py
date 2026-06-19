@@ -168,6 +168,65 @@ st.markdown(
 
     @media (max-width:1000px){.saas-grid{grid-template-columns:repeat(2,minmax(0,1fr));}.module-grid{grid-template-columns:1fr;}}
     @media (max-width:1000px){.exec-grid{grid-template-columns:1fr;}.ayca-header{display:block}.header-pill{display:inline-block;margin-top:10px}}
+
+
+    /* V10.7.2 - Her merkeze özel renkli üst hero kartları */
+    .module-hero-v2 {
+        position:relative;
+        overflow:hidden;
+        border-radius:30px;
+        padding:24px 26px;
+        margin:16px 0 20px 0;
+        color:#FFFFFF;
+        box-shadow:0 22px 58px rgba(15,23,42,.14);
+        display:grid;
+        grid-template-columns:1.25fr .75fr;
+        gap:18px;
+        align-items:center;
+        min-height:168px;
+    }
+    .module-hero-v2:after {
+        content:"";
+        position:absolute;
+        width:360px;
+        height:360px;
+        right:-115px;
+        top:-135px;
+        border-radius:999px;
+        background:radial-gradient(circle,rgba(255,255,255,.24),rgba(255,255,255,0));
+    }
+    .module-hero-v2:before {
+        content:"";
+        position:absolute;
+        inset:0;
+        background:linear-gradient(90deg,rgba(255,255,255,.10),rgba(255,255,255,0));
+        pointer-events:none;
+    }
+    .module-hero-content, .module-hero-kpis {position:relative; z-index:2;}
+    .module-hero-eyebrow {font-size:13px; font-weight:900; color:rgba(255,255,255,.78); margin-bottom:8px;}
+    .module-hero-title {font-size:30px; line-height:1.08; font-weight:950; letter-spacing:-.8px; color:#FFFFFF; margin-bottom:10px;}
+    .module-hero-desc {font-size:14px; line-height:1.55; color:rgba(255,255,255,.86); max-width:760px;}
+    .module-hero-score {font-size:54px; line-height:1; font-weight:950; letter-spacing:-1.8px; color:#FFFFFF; margin-top:16px;}
+    .module-hero-score-label {font-size:13px; font-weight:900; color:rgba(255,255,255,.76); margin-top:6px;}
+    .module-hero-kpis {display:grid; grid-template-columns:1fr 1fr; gap:12px;}
+    .module-hero-kpi {
+        background:rgba(255,255,255,.14);
+        border:1px solid rgba(255,255,255,.24);
+        border-radius:18px;
+        padding:14px;
+        backdrop-filter:blur(10px);
+        min-height:86px;
+    }
+    .module-hero-kpi-label {font-size:12px; font-weight:900; color:rgba(255,255,255,.74); margin-bottom:8px;}
+    .module-hero-kpi-value {font-size:22px; font-weight:950; color:#FFFFFF; letter-spacing:-.35px;}
+    .hero-blue {background:linear-gradient(135deg,#1E3A8A 0%,#2563EB 55%,#38BDF8 100%);}
+    .hero-green {background:linear-gradient(135deg,#064E3B 0%,#059669 55%,#10B981 100%);}
+    .hero-orange {background:linear-gradient(135deg,#9A3412 0%,#EA580C 55%,#F97316 100%);}
+    .hero-purple {background:linear-gradient(135deg,#4C1D95 0%,#7C3AED 55%,#A855F7 100%);}
+    .hero-navy {background:linear-gradient(135deg,#020617 0%,#0F172A 50%,#1E3A8A 100%);}
+    @media (max-width:1000px){.module-hero-v2{grid-template-columns:1fr;}.module-hero-kpis{grid-template-columns:1fr 1fr;}}
+    @media (max-width:620px){.module-hero-kpis{grid-template-columns:1fr;}.module-hero-title{font-size:25px;}.module-hero-score{font-size:44px;}}
+
     </style>
     """,
     unsafe_allow_html=True,
@@ -717,6 +776,29 @@ def make_mini_card(title, value, note, css_class=""):
             <div class="mini-title">{title}</div>
             <div class="mini-value">{value}</div>
             <div class="mini-note">{note}</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def render_module_hero(theme: str, eyebrow: str, title: str, desc: str, score_value: str, score_label: str, kpis: list[tuple[str, str]]):
+    """Modül girişlerinde görsel kimlik veren renkli hero kart."""
+    kpi_html = "".join([
+        f"<div class='module-hero-kpi'><div class='module-hero-kpi-label'>{html.escape(str(k))}</div><div class='module-hero-kpi-value'>{html.escape(str(v))}</div></div>"
+        for k, v in (kpis or [])[:4]
+    ])
+    st.markdown(
+        f"""
+        <div class="module-hero-v2 hero-{html.escape(str(theme))}">
+            <div class="module-hero-content">
+                <div class="module-hero-eyebrow">{html.escape(str(eyebrow))}</div>
+                <div class="module-hero-title">{html.escape(str(title))}</div>
+                <div class="module-hero-desc">{html.escape(str(desc))}</div>
+                <div class="module-hero-score">{html.escape(str(score_value))}</div>
+                <div class="module-hero-score-label">{html.escape(str(score_label))}</div>
+            </div>
+            <div class="module-hero-kpis">{kpi_html}</div>
         </div>
         """,
         unsafe_allow_html=True,
@@ -2302,7 +2384,15 @@ if page == "🏠 Sabah Brifingi":
         )
 
 elif page == "📦 Operasyon Merkezi":
-    st.markdown('<div class="section-title">📦 Operasyon Merkezi</div>', unsafe_allow_html=True)
+    render_module_hero(
+        'blue',
+        '📦 Stok ve operasyon kontrolü',
+        'Operasyon Merkezi',
+        'Eczanenizin stok sağlığı, sipariş ihtiyaçları ve sermaye kullanımını tek merkezden takip edin.',
+        f"{int(score_items.get('Ürün Bulunurluğu', 0))}/100",
+        'Operasyon skoru',
+        [("Acil ürün", str(len(urgent_df))), ("Sipariş önerisi", str(len(reorder_df))), ("Bütçeli sipariş", money_fmt(order_budget_info.get('final_total', 0))), ("Ölü stok", str(len(dead_df)))]
+    )
     op_tabs = st.tabs(["🛒 Sipariş Motoru", "📦 Ürün Zekası", "🏆 Taşıyan Ürünler", "🧊 Ölü / Yavaş Stok"])
     with op_tabs[0]:
         s1, s2, s3, s4 = st.columns(4)
@@ -2321,7 +2411,15 @@ elif page == "📦 Operasyon Merkezi":
         with t2: st.dataframe(slow_df[product_cols].head(500), use_container_width=True, hide_index=True)
 
 elif page == "💰 Finans Merkezi":
-    st.markdown('<div class="section-title">💰 Finans Merkezi</div>', unsafe_allow_html=True)
+    render_module_hero(
+        'green',
+        '💰 Karlılık ve tahsilat kontrolü',
+        'Finans Merkezi',
+        'Karlılık, tahsilat performansı, nakit akışı ve sessiz kâr kayıplarını izleyin.',
+        f"{int(score_items.get('Karlılık', 0))}/100",
+        'Finans skoru',
+        [("Ciro", money_fmt(current_stats.get('ciro', 0))), ("Brüt kâr", money_fmt(current_stats.get('kar', 0))), ("Marj", pct_fmt(current_stats.get('marj', 0))), ("Tahsilat açığı", money_fmt(current_stats.get('tahsilat_acigi', 0)))]
+    )
 
     # Streamlit Cloud ortamında px değişkeni beklenmedik şekilde scope dışı kalırsa
     # finans ekranı kırılmasın diye bu bölümde lokal ve güvenli import kullanıyoruz.
@@ -2386,7 +2484,15 @@ elif page == "💰 Finans Merkezi":
             st.info("Tahsilat özeti için veri bulunamadı.")
 
 elif page == "👥 Hasta & Reçete Merkezi":
-    st.markdown('<div class="section-title">👥 Hasta & Reçete Merkezi</div>', unsafe_allow_html=True)
+    render_module_hero(
+        'purple',
+        '👥 Hasta, doktor ve reçete zekası',
+        'Hasta & Reçete Merkezi',
+        'Hasta sadakati, doktor katkısı, kurum performansı ve kontrollü reçete süreçlerini yönetin.',
+        f"{int(score_items.get('Büyüme', 0))}/100",
+        'Hasta & reçete skoru',
+        [("Aktif hasta", str(patient_loyalty.get('summary', {}).get('aktif_hasta', 0))), ("VIP hasta", str(patient_loyalty.get('summary', {}).get('vip_hasta', 0))), ("Kayıp riski", str(patient_loyalty.get('summary', {}).get('kayip_riski', 0))), ("Kurum sayısı", str(len(kurum_df)))]
+    )
     hr_tabs = st.tabs(["👨‍⚕️ Doktor Analizi", "👥 Hasta Sadakati", "🏥 Kurum Analizi", "🔐 Reçete Takibi"])
     with hr_tabs[0]:
         if doctor_intel.get("doctor_kpi") is not None and not doctor_intel.get("doctor_kpi").empty:
@@ -2405,8 +2511,15 @@ elif page == "👥 Hasta & Reçete Merkezi":
         with rec_tabs[3]: st.dataframe(ek_izlem_df[product_cols].head(300), use_container_width=True, hide_index=True)
 
 elif page == "🤖 AYÇA Copilot":
-    st.markdown('<div class="section-title">🤖 AYÇA Copilot</div>', unsafe_allow_html=True)
-    st.caption("Copilot, özet ekran değil; eczacıya ne yapacağını söyleyen yönetim danışmanı olarak çalışır.")
+    render_module_hero(
+        'navy',
+        '🤖 Karar destek asistanı',
+        'AYÇA Copilot',
+        'Özet ekran değil; eczacıya ne yapacağını söyleyen yönetim danışmanı olarak çalışır.',
+        'Hazır',
+        'Yönetim danışmanı',
+        [("Hazır soru", '18'), ("Aksiyon", str(len(actions[:8]))), ("Risk sinyali", str(len(kki_df) + len(red_rx_df) + len(green_rx_df))), ("Sipariş önerisi", str(len(reorder_df)))]
+    )
 
     health_sections = build_health_analysis_sections(score, score_items, current_stats, product_master, dead_df, slow_df, urgent_df, reorder_df, patient_loyalty, business_insights, kki_df)
     copilot_tabs = st.tabs(["📋 Genel Durum", "🧠 Bana Sor"])
@@ -2854,8 +2967,15 @@ elif page == "🏥 Kurum Intelligence":
         st.dataframe(kurum_df, use_container_width=True, hide_index=True)
 
 elif page == "🚨 Risk Merkezi":
-    st.markdown('<div class="section-title">🧯 Eczacı Risk Merkezi</div>', unsafe_allow_html=True)
-    st.caption("Kırmızı/yeşil reçete, TİTCK ek izlem ve KKİ risklerini ürün bazlı satış-stok verisiyle birleştirir.")
+    render_module_hero(
+        'orange',
+        '🚨 Kontrollü risk takibi',
+        'Risk Merkezi',
+        'KKİ, miad, kırmızı/yeşil reçete ve ek izlem risklerini ürün bazlı satış-stok verisiyle birleştirir.',
+        f"{max(0, 100 - int(len(kki_df) + len(red_rx_df) + len(green_rx_df)))} /100",
+        'Risk kontrol skoru',
+        [("Kırmızı reçete", str(len(red_rx_df))), ("Yeşil reçete", str(len(green_rx_df))), ("Ek izlem", str(len(ek_izlem_df))), ("KKİ risk", str(len(kki_df)))]
+    )
 
     a1, a2, a3, a4 = st.columns(4)
     with a1: make_mini_card("🔴 Kırmızı Reçete", str(len(red_rx_df)), f"Stok: {money_fmt(red_rx_df['stok_degeri'].sum())}", "alert-red" if len(red_rx_df) else "")
