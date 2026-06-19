@@ -1,5 +1,5 @@
 # ============================================================
-# AYÇA Insight V10.4 Executive Dashboard Stabilized - Kontrol Merkezi + Asistan + Ürün Fırsatları
+# AYÇA Insight V10.6 Copilot Health Analysis - Kontrol Merkezi + Asistan + Ürün Fırsatları
 # ------------------------------------------------------------
 # Zorunlu / Önerilen dosyalar:
 # 1) Envanter Exceli
@@ -43,7 +43,7 @@ import streamlit as st
 # STREAMLIT AYARI
 # ============================================================
 st.set_page_config(
-    page_title="AYÇA Insight V10.4 Executive Dashboard Stabilized",
+    page_title="AYÇA Insight V10.6 Copilot Health Analysis",
     page_icon="💊",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -136,6 +136,14 @@ st.markdown(
     .brief-sub {color:#DBEAFE; font-size:14px; line-height:1.55; position:relative; z-index:2; max-width:760px;}
     .brief-score {font-size:64px; font-weight:950; letter-spacing:-2px; color:white; line-height:1; margin-top:18px; position:relative; z-index:2;}
     .brief-score-label {font-size:13px; font-weight:900; color:#BFDBFE; position:relative; z-index:2;}
+    .brief-health-box {position:relative; z-index:2; margin-top:18px; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px;}
+    .brief-health-col {background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.18); border-radius:16px; padding:12px; backdrop-filter:blur(8px);}
+    .brief-health-title {font-size:13px; font-weight:950; color:#FFFFFF; margin-bottom:8px;}
+    .brief-health-item {font-size:12px; line-height:1.35; color:#E0F2FE; margin:7px 0; font-weight:780;}
+    .brief-health-result {position:relative; z-index:2; margin-top:14px; background:rgba(255,255,255,.10); border:1px solid rgba(255,255,255,.16); border-radius:16px; padding:12px; color:#FFFFFF; font-size:13px; line-height:1.45; font-weight:800;}
+    .copilot-question-grid {display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; margin:12px 0 16px 0;}
+    .copilot-question {background:#FFFFFF; border:1px solid #E2E8F0; border-radius:16px; padding:12px; font-weight:900; color:#0F172A; box-shadow:0 8px 22px rgba(15,23,42,.045);}
+    @media (max-width:1000px){.brief-health-box,.copilot-question-grid{grid-template-columns:1fr;}}
     .brief-panel {background:#FFFFFF; border:1px solid #E2E8F0; border-radius:28px; padding:20px; box-shadow:0 16px 44px rgba(15,23,42,.07);}
     .group-title {font-size:19px; font-weight:950; color:#0F172A; margin:22px 0 12px 0; letter-spacing:-.25px;}
     .group-grid {display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; margin-bottom:14px;}
@@ -499,7 +507,7 @@ def show_demo_auth_screen():
                     <div class="login-clean-feature">✓ Stok ve sermaye kontrolü</div>
                     <div class="login-clean-feature">✓ Yapay zekâ destekli içgörüler</div>
                 </div>
-                <div class="login-clean-version">AYÇA Insight V10.4 · Executive Dashboard</div>
+                <div class="login-clean-version">AYÇA Insight V10.6 · Copilot Health Analysis</div>
             </div>
             """,
             unsafe_allow_html=True,
@@ -1775,7 +1783,7 @@ if st.sidebar.button("Çıkış Yap", use_container_width=True):
     safe_rerun()
 
 st.sidebar.title("💊 AYÇA Insight")
-st.sidebar.caption("V10.2 SaaS · Sade Menü + Tam Ekran Giriş")
+st.sidebar.caption("V10.6 Copilot · Sağlık Analizi + Bana Sor")
 eczane_adi = st.sidebar.text_input("Eczane Adı", value="İdil Eczanesi")
 kullanici_adi = st.sidebar.text_input("Kullanıcı", value="Abdullah Bey")
 
@@ -1819,7 +1827,7 @@ if inventory_file is None or product_file is None or sales_file is None:
         f"""
         <div class="ayca-header">
             <div class="ayca-title">
-                <h1>AYÇA Insight V10.4 Executive Dashboard Stabilized</h1>
+                <h1>AYÇA Insight V10.6 Copilot Health Analysis</h1>
                 <p>{eczane_adi} · Üç Excel dosyasını yükle: envanter, ürün bazında toplamlar, satış hareketleri.</p>
             </div>
             <div class="header-pill">Dosya bekleniyor</div>
@@ -1968,7 +1976,7 @@ st.markdown(
     f"""
     <div class="ayca-header">
         <div class="ayca-title">
-            <h1>AYÇA Insight V10.3</h1>
+            <h1>AYÇA Insight V10.6</h1>
             <p>{eczane_adi} · {period_label} · Gün hesabı: {analysis_days} gün · {today_str}</p>
         </div>
         <div class="header-pill">{get_membership()} Plan · Sağlık Skoru {score}/100</div>
@@ -2074,6 +2082,140 @@ product_cols = [
     "siparis_segmenti", "siparis_filtre_gecer_mi", "teknik_siparis_onerisi_ham", "siparis_onerisi_ham", "siparis_tahmini_tutar_ham", "siparis_onerisi", "siparis_tahmini_tutar", "siparis_kisit_katsayisi", "abc_sinif", "aksiyon"
 ]
 
+
+def _top_product_name(df: pd.DataFrame, sort_col: str = "stok_degeri") -> str:
+    try:
+        if df is None or df.empty or "urun" not in df.columns:
+            return "-"
+        if sort_col in df.columns:
+            return str(df.sort_values(sort_col, ascending=False).iloc[0]["urun"])
+        return str(df.iloc[0]["urun"])
+    except Exception:
+        return "-"
+
+
+def build_health_analysis_sections(score: int, score_items: dict, current_stats: dict, product_master: pd.DataFrame,
+                                   dead_df: pd.DataFrame, slow_df: pd.DataFrame, urgent_df: pd.DataFrame,
+                                   reorder_df: pd.DataFrame, patient_loyalty: dict, business_insights: dict,
+                                   kki_df: pd.DataFrame) -> dict:
+    """Sabah Brifingi ve Copilot için kısa, aksiyonlu sağlık yorumu üretir."""
+    strong, watch, urgent = [], [], []
+    marj = float(current_stats.get("marj", 0) or 0)
+    ciro = float(current_stats.get("ciro", 0) or 0)
+    tahsilat_acigi = float(current_stats.get("tahsilat_acigi", 0) or 0)
+    dead_value = float(dead_df.get("stok_degeri", pd.Series(dtype=float)).sum()) if dead_df is not None and not dead_df.empty else 0.0
+    slow_value = float(slow_df.get("stok_degeri", pd.Series(dtype=float)).sum()) if slow_df is not None and not slow_df.empty else 0.0
+    stock_value = float(product_master.get("stok_degeri", pd.Series(dtype=float)).sum()) if product_master is not None and not product_master.empty else 0.0
+    dead_ratio = safe_div(dead_value, stock_value)
+    lost_count = int(patient_loyalty.get("summary", {}).get("kayip_riski", 0)) if patient_loyalty else 0
+    vip_count = int(patient_loyalty.get("summary", {}).get("vip_hasta", 0)) if patient_loyalty else 0
+
+    if marj >= 0.15:
+        strong.append(f"Brüt marj sağlıklı: {pct_fmt(marj)}")
+    else:
+        watch.append(f"Brüt marj izlenmeli: {pct_fmt(marj)}")
+    if ciro > 0:
+        strong.append(f"Dönem ciro hacmi güçlü: {money_fmt(ciro)}")
+    if len(urgent_df) == 0:
+        strong.append("Acil sipariş baskısı düşük")
+    else:
+        urgent.append(f"{len(urgent_df)} ürün acil sipariş listesinde")
+    if dead_ratio > 0.10:
+        watch.append(f"Ölü stok sermayesi yüksek: {money_fmt(dead_value)}")
+    elif dead_value > 0:
+        watch.append(f"Ölü stok takip edilmeli: {money_fmt(dead_value)}")
+    if len(slow_df) > 0:
+        watch.append(f"{len(slow_df)} yavaş stok raf/kampanya kontrolü istiyor")
+    if tahsilat_acigi > 0:
+        urgent.append(f"Tahsilat açığı kontrol edilmeli: {money_fmt(tahsilat_acigi)}")
+    if lost_count > 0:
+        urgent.append(f"{lost_count} hasta kayıp riski grubunda")
+    if len(kki_df) > 0:
+        watch.append(f"{len(kki_df)} KKİ/riskli ürün finansal takipte")
+    if vip_count > 0:
+        strong.append(f"{vip_count} VIP hasta segmenti korunmalı")
+
+    # En fazla 3 madde göster, boş kalmasın.
+    strong = (strong or ["Genel operasyon izlenebilir seviyede"])[:3]
+    watch = (watch or ["Belirgin orta seviye uyarı görünmüyor"])[:3]
+    urgent = (urgent or ["Bugün kritik alarm görünmüyor"])[:3]
+
+    if score >= 80:
+        result = "Eczaneniz genel olarak sağlıklı görünüyor. Bugünkü odak, iyi performansı koruyup stok ve tahsilat sapmalarını erken yakalamak olmalı."
+    elif score >= 60:
+        result = "Eczaneniz orta-sağlıklı seviyede. Kârlılık korunurken ölü stok, hasta kaybı ve tahsilat tarafında aksiyon alınırsa skor hızla yükselir."
+    else:
+        result = "Eczanenizde operasyonel baskı yüksek. İlk öncelik acil sipariş, tahsilat açığı ve sermaye bağlayan stokları azaltmak olmalı."
+
+    return {"strong": strong, "watch": watch, "urgent": urgent, "result": result}
+
+
+def build_health_analysis_html(sections: dict) -> str:
+    def items_html(items):
+        return "".join([f"<div class='brief-health-item'>• {x}</div>" for x in items])
+    return f"""
+        <div class="brief-health-box">
+            <div class="brief-health-col"><div class="brief-health-title">🟢 Güçlü Yönler</div>{items_html(sections.get('strong', []))}</div>
+            <div class="brief-health-col"><div class="brief-health-title">🟡 Dikkat</div>{items_html(sections.get('watch', []))}</div>
+            <div class="brief-health-col"><div class="brief-health-title">🔴 Acil Aksiyon</div>{items_html(sections.get('urgent', []))}</div>
+        </div>
+        <div class="brief-health-result">📌 {sections.get('result', '')}</div>
+    """
+
+
+def copilot_answer(question: str, product_master: pd.DataFrame, current_stats: dict, reorder_df: pd.DataFrame,
+                   dead_df: pd.DataFrame, slow_df: pd.DataFrame, business_insights: dict,
+                   patient_loyalty: dict, doctor_intel: dict, payment_df: Optional[pd.DataFrame]) -> list[str]:
+    q = normalize_col_name(question or "")
+    answers = []
+    if any(k in q for k in ["kar", "marj", "zarar", "karlilik", "karli"]):
+        answers.append(f"Dönem brüt kârınız {money_fmt(current_stats.get('kar', 0))}, brüt marjınız {pct_fmt(current_stats.get('marj', 0))}.")
+        silent = business_insights.get("silent_loss", pd.DataFrame())
+        if silent is not None and not silent.empty:
+            r = silent.iloc[0]
+            answers.append(f"İlk kontrol edilecek sessiz kâr kaybı adayı: {r.get('urun','-')} · tahmini etki {money_fmt(r.get('tahmini_sessiz_kayip',0))}.")
+        profit = product_master[product_master.get("satilan_adet", 0) > 0].sort_values("kar_tutari", ascending=False) if product_master is not None and not product_master.empty else pd.DataFrame()
+        if not profit.empty:
+            r = profit.iloc[0]
+            answers.append(f"En çok kâr getiren ürün: {r.get('urun','-')} · {money_fmt(r.get('kar_tutari',0))}.")
+    elif any(k in q for k in ["stok", "sermaye", "olu", "yavas", "azalt"]):
+        answers.append(f"Stokta bağlı toplam sermaye yaklaşık {money_fmt(product_master.get('stok_degeri', pd.Series(dtype=float)).sum())}.")
+        if dead_df is not None and not dead_df.empty:
+            r = dead_df.sort_values("stok_degeri", ascending=False).iloc[0]
+            answers.append(f"İlk azaltılacak/aksiyon alınacak ölü stok: {r.get('urun','-')} · {money_fmt(r.get('stok_degeri',0))}.")
+        if slow_df is not None and not slow_df.empty:
+            r = slow_df.sort_values("stok_degeri", ascending=False).iloc[0]
+            answers.append(f"Yavaş stokta raf/kampanya kontrolü: {r.get('urun','-')}.")
+    elif any(k in q for k in ["siparis", "almal", "bitecek", "oner"]):
+        answers.append(f"Bütçeli sipariş öneriniz {money_fmt(reorder_df.get('siparis_tahmini_tutar', pd.Series(dtype=float)).sum())}; listede {len(reorder_df)} ürün var.")
+        if reorder_df is not None and not reorder_df.empty:
+            r = reorder_df.sort_values("siparis_tahmini_tutar", ascending=False).iloc[0]
+            answers.append(f"En yüksek tutarlı sipariş önerisi: {r.get('urun','-')} · {num_fmt(r.get('siparis_onerisi',0),0)} adet · {money_fmt(r.get('siparis_tahmini_tutar',0))}.")
+    elif any(k in q for k in ["hasta", "vip", "kayip", "musteri"]):
+        summary = patient_loyalty.get("summary", {}) if patient_loyalty else {}
+        answers.append(f"Aktif hasta {summary.get('aktif_hasta',0)}, VIP segment {summary.get('vip_hasta',0)}, kayıp riski {summary.get('kayip_riski',0)}.")
+        lost = patient_loyalty.get("lost", pd.DataFrame()) if patient_loyalty else pd.DataFrame()
+        if lost is not None and not lost.empty:
+            r = lost.iloc[0]
+            answers.append(f"İlk geri kazanım adayı: {r.get('hasta_clean','Hasta')} · önceki ciro {money_fmt(r.get('onceki_ciro',0))}.")
+    elif any(k in q for k in ["doktor", "recete", "reçete"]):
+        doc = doctor_intel.get("doctor_kpi", pd.DataFrame()) if doctor_intel else pd.DataFrame()
+        if doc is not None and not doc.empty:
+            r = doc.sort_values("ciro", ascending=False).iloc[0]
+            answers.append(f"En çok ciro getiren doktor: {r.get('doktor_clean','-')} · {money_fmt(r.get('ciro',0))}.")
+            answers.append("Doktor trend düşüşleri için Hasta & Reçete Merkezi > Doktor Analizi tablosunu kontrol edin.")
+        else:
+            answers.append("Doktor analizi için satış hareketlerinde doktor alanı bulunmalı.")
+    elif any(k in q for k in ["tahsilat", "nakit", "odeme", "ödeme", "finans"]):
+        answers.append(f"Tahsilat açığı {money_fmt(current_stats.get('tahsilat_acigi',0))}; ciroya oranı {pct_fmt(safe_div(current_stats.get('tahsilat_acigi',0), current_stats.get('ciro',0)))}.")
+        if payment_df is not None and not payment_df.empty and "ciro" in payment_df.columns:
+            r = payment_df.sort_values("ciro", ascending=False).iloc[0]
+            answers.append(f"En büyük tahsilat kanalı: {r.get('tahsilat','-')} · {money_fmt(r.get('ciro',0))}.")
+    else:
+        answers.append("Bu soru için genel analiz: önce finansal marjı, sonra stokta bağlı sermayeyi, ardından hasta/doktor kayıp riskini kontrol edin.")
+        answers.append(f"Bugünkü genel sağlık skoru ve aksiyonlar Sabah Brifingi'nde özetlenmiştir; sipariş önerisi {money_fmt(reorder_df.get('siparis_tahmini_tutar', pd.Series(dtype=float)).sum())}.")
+    return answers[:4]
+
 # Güvenli dönem etiketi: bazı Streamlit yeniden çalıştırmalarında sidebar değeri erişilemezse hata vermesin.
 period_label = st.session_state.get("selected_period_label", globals().get("selected_period", "Son 30 gün"))
 
@@ -2084,15 +2226,18 @@ if page == "🏠 Sabah Brifingi":
     top_actions = actions[:5] if actions else ["Kritik aksiyon görünmüyor. Bugün genel takip yeterli."]
     task_html = "".join([f"<div class='task-item'><span>☑</span><span>{item}</span></div>" for item in top_actions])
     risk_total = len(red_rx_df) + len(green_rx_df) + len(ek_izlem_df) + len(kki_df)
+    health_sections = build_health_analysis_sections(score, score_items, current_stats, product_master, dead_df, slow_df, urgent_df, reorder_df, patient_loyalty, business_insights, kki_df)
+    health_html = build_health_analysis_html(health_sections)
 
     st.markdown(
         f"""
         <div class="brief-grid">
             <div class="brief-hero">
                 <div class="brief-title">Günaydın {kullanici_adi} 👋</div>
-                <div class="brief-sub">AYÇA bugün eczanenizin ekonomik, envanter ve risk durumunu sade bir sabah brifingine dönüştürdü.</div>
+                <div class="brief-sub">AYÇA bugün eczanenizin ekonomik, envanter, hasta sadakati ve risk durumunu sağlık analizine dönüştürdü.</div>
                 <div class="brief-score">{score}</div>
                 <div class="brief-score-label">Eczane Sağlık Skoru · {score_status(score)}</div>
+                {health_html}
             </div>
             <div class="brief-panel">
                 <div class="group-title" style="margin-top:0;">🤖 AYÇA Bugün Ne Diyor?</div>
@@ -2250,32 +2395,152 @@ elif page == "👥 Hasta & Reçete Merkezi":
         with rec_tabs[3]: st.dataframe(ek_izlem_df[product_cols].head(300), use_container_width=True, hide_index=True)
 
 elif page == "🤖 AYÇA Copilot":
-    st.markdown('<div class="section-title">🎯 AYÇA Asistan</div>', unsafe_allow_html=True)
-    st.markdown(
-        f"""
-        <div class="exec-card" style="margin-bottom:16px;">
-            <div class="exec-title">🤖 Günaydın {kullanici_adi}</div>
-            <div class="exec-sub">AYÇA bugün eczanenin satış, stok, sipariş, kârlılık ve tahsilat verilerini özetledi.</div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-    render_assistant_cards(business_insights.get("assistant_cards", []))
+    st.markdown('<div class="section-title">🤖 AYÇA Copilot</div>', unsafe_allow_html=True)
+    st.caption("Copilot artık özet ekran değil; eczacıya ne yapacağını söyleyen yönetim danışmanı olarak çalışır.")
 
-    s1, s2, s3, s4 = st.columns(4)
-    with s1: make_mini_card("Önerilen Sipariş", money_fmt(order_budget_info["final_total"]), f"Stokun %{int(order_budget_info['budget_ratio']*100)} bütçesi", "alert-green")
-    with s2: make_mini_card("Acil Sipariş", str(len(urgent_df)), "10+ satış veya ≤15.000 TL filtresi", "alert-red" if len(urgent_df) else "alert-green")
-    with s3: make_mini_card("Sessiz Kâr Kaybı", str(business_insights['summary']['silent_loss_count']), money_fmt(business_insights['summary']['silent_loss_amount']), "alert-orange" if business_insights['summary']['silent_loss_count'] else "alert-green")
-    with s4: make_mini_card("Hareketsiz Sermaye", money_fmt(business_insights['summary']['lost_candidate_value']), f"{business_insights['summary']['lost_candidate_count']} ürün", "alert-purple" if business_insights['summary']['lost_candidate_count'] else "alert-green")
+    health_sections = build_health_analysis_sections(score, score_items, current_stats, product_master, dead_df, slow_df, urgent_df, reorder_df, patient_loyalty, business_insights, kki_df)
+    copilot_tabs = st.tabs(["📋 Genel Durum", "📦 Stok Danışmanı", "💰 Finans Danışmanı", "👨‍⚕️ Doktor Danışmanı", "👥 Hasta Danışmanı", "🧠 Bana Sor"])
 
-    c1, c2 = st.columns(2)
-    with c1:
-        st.markdown('<div class="section-title">İlk Öncelikli Siparişler</div>', unsafe_allow_html=True)
-        st.dataframe(reorder_df[product_cols].head(15), use_container_width=True, hide_index=True)
-    with c2:
-        st.markdown('<div class="section-title">Bugün Kontrol Edilecek Kâr Kayıpları</div>', unsafe_allow_html=True)
-        silent_cols = [c for c in product_cols + ["tahmini_sessiz_kayip"] if c in business_insights["silent_loss"].columns]
-        st.dataframe(business_insights["silent_loss"][silent_cols].head(15), use_container_width=True, hide_index=True)
+    with copilot_tabs[0]:
+        st.markdown(
+            f"""
+            <div class="exec-grid">
+                <div class="exec-card">
+                    <div class="exec-title">Eczane CEO Özeti</div>
+                    <div class="exec-sub">AYÇA, sağlık skorunu yalnızca puan olarak değil; güçlü yön, dikkat alanı ve aksiyon planı olarak yorumlar.</div>
+                    {''.join([f'<div class="exec-list-item">🟢 {x}</div>' for x in health_sections.get('strong', [])])}
+                    {''.join([f'<div class="exec-list-item">🟡 {x}</div>' for x in health_sections.get('watch', [])])}
+                    {''.join([f'<div class="exec-list-item">🔴 {x}</div>' for x in health_sections.get('urgent', [])])}
+                </div>
+                <div class="exec-card">
+                    <div class="exec-sub">Genel Sağlık Skoru</div>
+                    <div class="score-big">{score}</div>
+                    <div class="exec-sub">{score_status(score)}</div>
+                    <div class="exec-list-item">📌 {health_sections.get('result','')}</div>
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+        for name, val in score_items.items():
+            st.markdown(
+                f"""
+                <div class="health-row"><div class="health-head"><span>{name}</span><span>{val}/100</span></div>
+                <div class="health-bar-bg"><div class="health-bar-fill" style="width:{val}%;"></div></div></div>
+                """,
+                unsafe_allow_html=True,
+            )
+        st.markdown('<div class="section-title">Bu Hafta Yapılacaklar</div>', unsafe_allow_html=True)
+        for item in actions[:7]:
+            st.markdown(f"<div class='exec-list-item'>☑ {item}</div>", unsafe_allow_html=True)
+
+    with copilot_tabs[1]:
+        s1, s2, s3, s4 = st.columns(4)
+        with s1: make_mini_card("Önerilen Sipariş", money_fmt(order_budget_info["final_total"]), f"Bütçe {money_fmt(order_budget_info['budget_limit'])}", "alert-green")
+        with s2: make_mini_card("Acil Sipariş", str(len(urgent_df)), "Satış kaçırma riski", "alert-red" if len(urgent_df) else "alert-green")
+        with s3: make_mini_card("Ölü Stok", str(len(dead_df)), money_fmt(dead_df["stok_degeri"].sum()), "alert-orange" if len(dead_df) else "alert-green")
+        with s4: make_mini_card("Yavaş Stok", str(len(slow_df)), money_fmt(slow_df["stok_degeri"].sum()), "alert-purple" if len(slow_df) else "alert-green")
+        c1, c2 = st.columns(2)
+        with c1:
+            st.markdown('<div class="section-title">İlk Öncelikli Siparişler</div>', unsafe_allow_html=True)
+            st.dataframe(reorder_df[product_cols].head(20), use_container_width=True, hide_index=True)
+        with c2:
+            st.markdown('<div class="section-title">Sermaye Bağlayan Stoklar</div>', unsafe_allow_html=True)
+            capital_view = pd.concat([dead_df, slow_df], ignore_index=True).drop_duplicates("barkod") if not dead_df.empty or not slow_df.empty else pd.DataFrame()
+            if capital_view.empty:
+                st.success("Belirgin sermaye bağlayan ölü/yavaş stok görünmüyor.")
+            else:
+                st.dataframe(capital_view[[c for c in product_cols if c in capital_view.columns]].sort_values("stok_degeri", ascending=False).head(20), use_container_width=True, hide_index=True)
+
+    with copilot_tabs[2]:
+        f1, f2, f3, f4 = st.columns(4)
+        with f1: make_metric_card("Ciro", money_fmt(current_stats.get("ciro", 0)), period_label, ciro_trend, ciro_class)
+        with f2: make_metric_card("Brüt Kâr", money_fmt(current_stats.get("kar", 0)), "Satış hareketleri", profit_trend, profit_class)
+        with f3: make_metric_card("Marj", pct_fmt(current_stats.get("marj", 0)), "Brüt kâr / ciro", margin_trend, margin_class)
+        with f4: make_metric_card("Tahsilat Açığı", money_fmt(current_stats.get("tahsilat_acigi", 0)), "Kapanmayan fark")
+        c1, c2 = st.columns(2)
+        with c1:
+            silent = business_insights.get("silent_loss", pd.DataFrame())
+            st.markdown('<div class="section-title">Sessiz Kâr Kaybı Adayları</div>', unsafe_allow_html=True)
+            if silent is not None and not silent.empty:
+                silent_cols = [c for c in product_cols + ["tahmini_sessiz_kayip"] if c in silent.columns]
+                st.dataframe(silent[silent_cols].head(20), use_container_width=True, hide_index=True)
+            else:
+                st.success("Belirgin sessiz kâr kaybı adayı görünmüyor.")
+        with c2:
+            st.markdown('<div class="section-title">Tahsilat Kanalları</div>', unsafe_allow_html=True)
+            if payment_df is not None and not payment_df.empty:
+                st.dataframe(payment_df, use_container_width=True, hide_index=True)
+            else:
+                st.info("Tahsilat kırılımı için yeterli veri bulunamadı.")
+
+    with copilot_tabs[3]:
+        doctor_kpi = doctor_intel.get("doctor_kpi", pd.DataFrame()) if doctor_intel else pd.DataFrame()
+        if doctor_kpi.empty:
+            st.info("Doktor danışmanı için satış hareketlerinde doktor alanı gerekir.")
+        else:
+            d1, d2, d3 = st.columns(3)
+            top_doc = doctor_kpi.sort_values("ciro", ascending=False).iloc[0]
+            top_profit_doc = doctor_kpi.sort_values("kar", ascending=False).iloc[0]
+            with d1: make_mini_card("Doktor Sayısı", str(doctor_kpi["doktor_clean"].nunique()), "Seçili dönem", "alert-blue")
+            with d2: make_mini_card("Ciro Lideri", str(top_doc["doktor_clean"]), money_fmt(top_doc["ciro"]), "alert-green")
+            with d3: make_mini_card("Kâr Lideri", str(top_profit_doc["doktor_clean"]), money_fmt(top_profit_doc["kar"]), "alert-purple")
+            c1, c2 = st.columns(2)
+            with c1:
+                fig = px.bar(doctor_kpi.head(15), x="ciro", y="doktor_clean", orientation="h", title="Ciroya Göre Doktorlar")
+                st.plotly_chart(apply_plot_theme(fig, height=480), use_container_width=True)
+            with c2:
+                st.dataframe(doctor_kpi.head(30), use_container_width=True, hide_index=True)
+
+    with copilot_tabs[4]:
+        summary = patient_loyalty.get("summary", {}) if patient_loyalty else {}
+        if not summary:
+            st.info("Hasta danışmanı için satış dosyasında hasta adı bilgisi gerekir.")
+        else:
+            h1, h2, h3 = st.columns(3)
+            with h1: make_mini_card("Aktif Hasta", str(summary.get("aktif_hasta", 0)), "Son 12 ay", "alert-blue")
+            with h2: make_mini_card("VIP Hasta", str(summary.get("vip_hasta", 0)), "Korunacak segment", "alert-green")
+            with h3: make_mini_card("Kayıp Riski", str(summary.get("kayip_riski", 0)), "Son 90 gün", "alert-red" if summary.get("kayip_riski", 0) else "alert-green")
+            vip_view = patient_loyalty.get("vip", pd.DataFrame()).copy()
+            lost_view = patient_loyalty.get("lost", pd.DataFrame()).copy()
+            if mask_patient_display:
+                vip_view = mask_patient_names(vip_view)
+                lost_view = mask_patient_names(lost_view)
+            t1, t2 = st.tabs(["VIP Koruma Listesi", "Geri Kazanım Listesi"])
+            with t1: st.dataframe(vip_view.head(50), use_container_width=True, hide_index=True)
+            with t2: st.dataframe(lost_view.head(50), use_container_width=True, hide_index=True)
+
+    with copilot_tabs[5]:
+        st.markdown('<div class="section-title">Hazır Sorular</div>', unsafe_allow_html=True)
+        ready_questions = [
+            "Bu ay neden kâr düştü?",
+            "Hangi ürünler sermaye bağlıyor?",
+            "Bu hafta ne sipariş etmeliyim?",
+            "Kaybettiğim hastalar kimler?",
+            "En çok ciro getiren doktorlar kimler?",
+            "Tahsilat yapım sağlıklı mı?",
+        ]
+        q_cols = st.columns(3)
+        for i, q in enumerate(ready_questions):
+            with q_cols[i % 3]:
+                if st.button(q, use_container_width=True, key=f"copilot_q_{i}"):
+                    st.session_state["copilot_question"] = q
+        custom_q = st.text_input("AYÇA'ya sor", value=st.session_state.get("copilot_question", "Hangi ürünler paramı bağlıyor?"))
+        if st.button("Yanıtla", type="primary", use_container_width=True):
+            st.session_state["copilot_question"] = custom_q
+        selected_q = st.session_state.get("copilot_question", custom_q)
+        st.markdown(
+            f"""
+            <div class="ai-card">
+                <div class="ai-title">Soru: {selected_q}</div>
+                <div class="ai-text">AYÇA'nın veri bazlı yanıtı aşağıdadır.</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+        for ans in copilot_answer(selected_q, product_master, current_stats, reorder_df, dead_df, slow_df, business_insights, patient_loyalty, doctor_intel, payment_df):
+            st.markdown(f"<div class='exec-list-item'>💡 {ans}</div>", unsafe_allow_html=True)
+        st.caption("Bu bölüm şu an kural tabanlı çalışır. İleride gerçek LLM/API bağlantısı ile serbest soru-cevap motoruna dönüşebilir.")
 
 elif page == "🩺 Sağlık Karnesi":
     st.markdown('<div class="section-title">🩺 Eczane Sağlık Karnesi</div>', unsafe_allow_html=True)
@@ -2765,7 +3030,7 @@ elif page == "📊 Raporlar":
         patient_loyalty.get("frequency"), patient_loyalty.get("lost"), business_insights
     )
     st.download_button(
-        "📥 AYÇA Insight V10.4 Executive Dashboard Stabilized Raporunu İndir",
+        "📥 AYÇA Insight V10.6 Copilot Health Analysis Raporunu İndir",
         data=report,
         file_name=f"ayca_insight_v9_2_kki_risk_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
